@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { GuardHitRaw } from '@/lib/mock';
+import type { GuardHit } from '@/lib/guardrails';
 
 export function GuardedText({
   text,
@@ -9,7 +9,7 @@ export function GuardedText({
   onReplace,
 }: {
   text: string;
-  guards: GuardHitRaw[];
+  guards: GuardHit[];
   onReplace?: (oldWord: string, newWord: string) => void;
 }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -17,7 +17,7 @@ export function GuardedText({
   if (!guards || guards.length === 0) return <>{text}</>;
 
   // Split text by guard words, preserving segments
-  type Part = string | { g: GuardHitRaw; w: string; idx: number };
+  type Part = string | { g: GuardHit; w: string; idx: number };
   let parts: Part[] = [text];
   let guardIdx = 0;
 

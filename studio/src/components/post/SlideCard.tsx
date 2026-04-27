@@ -1,5 +1,5 @@
 import { PRINCIPLES } from '@/lib/principles';
-import type { Slide } from '@/lib/mock';
+import type { EditorSlide } from '@/lib/editor';
 import { PrincipleBadge } from './PrincipleBadge';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,7 @@ export function SlideCard({
   onClick,
 }: {
   index: number;
-  slide: Slide;
+  slide: EditorSlide;
   selected: boolean;
   onClick: () => void;
 }) {
