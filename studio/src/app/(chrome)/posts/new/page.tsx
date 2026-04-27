@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState, useTransition } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { SERIES, PERSONAS } from '@/lib/mock';
 import type { Series, PersonaKey } from '@/lib/mock';
+import { generatePostAction } from './actions';
 
 const inputCls = 'w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none transition-colors resize-none';
 const inputStyle = { background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-primary)' };
@@ -47,8 +49,9 @@ function RadioGroup<T extends string>({
   );
 }
 
-export default function NewPostPage() {
+function NewPostInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [topic, setTopic] = useState('');
   const [series, setSeries] = useState<Series>('A');
   const [persona, setPersona] = useState<PersonaKey>('30s_office');
@@ -61,15 +64,37 @@ export default function NewPostPage() {
   const [emphasizeNoSell, setEmphasizeNoSell] = useState(true);
   const [refs, setRefs] = useState('');
   const [loading, setLoading] = useState(false);
+  const [, startTransition] = useTransition();
+
+  // Pre-fill topic from URL ?topic= (sent from dashboard quick-start)
+  useEffect(() => {
+    const t = searchParams.get('topic');
+    if (t) setTopic(t);
+  }, [searchParams]);
 
   const canGenerate = topic.trim() && facts.trim();
 
   const handleGenerate = () => {
+    if (!canGenerate || loading) return;
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/posts/p1/script');
-    }, 1400);
+    startTransition(async () => {
+      const res = await generatePostAction({
+        topic: topic.trim(),
+        series,
+        persona,
+        facts: facts.trim(),
+        tone,
+        slideCount,
+        cta,
+      });
+      if (res.error || !res.postId) {
+        setLoading(false);
+        toast.error(res.error ?? '생성 실패');
+        return;
+      }
+      // Loading screen stays visible during route navigation
+      router.push(`/posts/${res.postId}/script`);
+    });
   };
 
   const selectCls = 'w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none transition-colors';
@@ -298,5 +323,13 @@ export default function NewPostPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function NewPostPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewPostInner />
+    </Suspense>
   );
 }
