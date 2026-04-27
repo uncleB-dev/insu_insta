@@ -1,0 +1,216 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  /* 6원칙 컬러 Tailwind 토큰 */
+  --color-p-hook: var(--p-hook);
+  --color-p-problem: var(--p-problem);
+  --color-p-solution: var(--p-solution);
+  --color-p-doubt: var(--p-doubt);
+  --color-p-scarcity: var(--p-scarcity);
+  --color-p-cta: var(--p-cta);
+
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-hover: var(--brand-accent-hover);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-status-red: var(--status-red);
+  --color-status-yellow: var(--status-yellow);
+  --color-border-strong: var(--border-strong);
+
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, Menlo, monospace;
+}
+
+/* 프로젝트 디자인 토큰 */
+:root {
+  /* 배경 */
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #161616;
+  --bg-tertiary: #232323;
+
+  /* 텍스트 */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B0B0;
+  --text-muted: #6B6B6B;
+
+  /* 브랜드 */
+  --brand-accent: #00FF88;
+  --brand-accent-hover: #00CC6A;
+  --brand-accent-bg: rgba(0, 255, 136, 0.1);
+
+  /* 상태 */
+  --status-red: #FF4444;
+  --status-yellow: #FFB800;
+  --status-green: #00FF88;
+  --red-bg: rgba(255, 68, 68, 0.12);
+  --yellow-bg: rgba(255, 184, 0, 0.14);
+  --green-bg: rgba(0, 255, 136, 0.10);
+
+  /* 보더 */
+  --border-strong: #3A3A3A;
+  --border-focus: #00FF88;
+
+  /* 6원칙 */
+  --p-hook: #4DA6FF;
+  --p-problem: #FF8A3D;
+  --p-solution: #00FF88;
+  --p-doubt: #B57BFF;
+  --p-scarcity: #FF4D6D;
+  --p-cta: #FFD23F;
+
+  /* shadcn 토큰 — 다크 모드 고정 */
+  --background: #0A0A0A;
+  --foreground: #FFFFFF;
+  --card: #161616;
+  --card-foreground: #FFFFFF;
+  --popover: #161616;
+  --popover-foreground: #FFFFFF;
+  --primary: #00FF88;
+  --primary-foreground: #003320;
+  --secondary: #232323;
+  --secondary-foreground: #FFFFFF;
+  --muted: #232323;
+  --muted-foreground: #6B6B6B;
+  --accent: #232323;
+  --accent-foreground: #00FF88;
+  --destructive: #FF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #2A2A2A;
+  --input: #232323;
+  --ring: #00FF88;
+  --radius: 0.5rem;
+
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Guardrail inline marks */
+.guard-yellow {
+  text-decoration: underline wavy var(--status-yellow);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  background: var(--yellow-bg);
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: help;
+}
+
+.guard-red {
+  text-decoration: underline wavy var(--status-red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  background: var(--red-bg);
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: help;
+}
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
+}
+
+.skel {
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Loading bar animation */
+@keyframes loadingSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+/* Placeholder zone */
+.placeholder-zone {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 10px;
+  background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255, 255, 255, 0.015) 6px 12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
