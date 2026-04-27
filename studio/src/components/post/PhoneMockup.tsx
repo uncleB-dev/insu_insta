@@ -1,16 +1,25 @@
-import type { Slide } from '@/lib/mock';
+import type { Principle } from '@/lib/supabase/types';
+
+export type PhoneMockupSlide = {
+  principle: Principle;
+  main: string;
+  bg_src: string;
+};
 
 export function PhoneMockup({
   slide,
   slideIdx,
   totalSlides,
   caption,
+  hashtagPreview,
 }: {
-  slide: Slide;
+  slide: PhoneMockupSlide;
   slideIdx: number;
   totalSlides: number;
   caption: string;
+  hashtagPreview?: string;
 }) {
+  const bg = slide.bg_src || `https://picsum.photos/seed/insu${slideIdx + 10}/600/600`;
   return (
     <div
       className="relative"
@@ -24,7 +33,6 @@ export function PhoneMockup({
         boxShadow: 'var(--shadow-pop)',
       }}
     >
-      {/* 다이나믹 아일랜드 */}
       <div
         className="absolute z-10"
         style={{
@@ -38,12 +46,10 @@ export function PhoneMockup({
         }}
       />
 
-      {/* 화면 */}
       <div
         className="w-full h-full flex flex-col overflow-hidden"
         style={{ background: '#000', borderRadius: 28 }}
       >
-        {/* 인스타 헤더 */}
         <div className="flex items-center gap-2 px-3 pt-7 pb-2 text-white text-[13px]">
           <div
             className="w-7 h-7 rounded-full flex-shrink-0"
@@ -57,13 +63,13 @@ export function PhoneMockup({
           <span className="text-white">⋯</span>
         </div>
 
-        {/* 슬라이드 이미지 */}
         <div
           className="relative"
           style={{
             aspectRatio: '1/1',
-            backgroundImage: `url(https://picsum.photos/seed/insu${slideIdx + 10}/600/600)`,
+            backgroundImage: `url(${bg})`,
             backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
         >
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
@@ -88,7 +94,6 @@ export function PhoneMockup({
           </div>
         </div>
 
-        {/* 액션 버튼 */}
         <div className="flex items-center gap-3.5 px-3 py-2.5 text-white text-lg">
           <span>♡</span>
           <span>💬</span>
@@ -97,10 +102,11 @@ export function PhoneMockup({
           <span>🔖</span>
         </div>
 
-        {/* 캡션 */}
         <div className="px-3 pb-3 text-white text-[11px] leading-snug">
-          <b>uncleb_studio</b> {caption.slice(0, 80)}...
-          <div className="mt-1" style={{ color: '#7aaa7a' }}>#보험삼촌 #암보험 #비급여...</div>
+          <b>uncleb_studio</b> {caption.slice(0, 80)}{caption.length > 80 ? '…' : ''}
+          {hashtagPreview && (
+            <div className="mt-1" style={{ color: '#7aaa7a' }}>{hashtagPreview}</div>
+          )}
         </div>
       </div>
     </div>

@@ -1,11 +1,16 @@
-'use client';
-
-import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { PreviewBody } from '@/components/post/PreviewBody';
+import { loadPreviewBundle } from '@/lib/preview';
 
-export default function PreviewPage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
+export default async function PreviewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const bundle = await loadPreviewBundle(id);
+  if (!bundle) notFound();
 
   return (
     <div className="flex flex-col gap-6">
@@ -14,18 +19,23 @@ export default function PreviewPage() {
           <span className="text-[24px]">4️⃣</span>
           <h1 className="text-[24px] font-bold m-0 tracking-tight">미리보기 & 다운로드</h1>
         </div>
-        <button
-          className="px-3 py-2 rounded-lg text-[13px] font-medium transition-colors"
+        <Link
+          href={`/posts/${id}/design`}
+          className="px-3 py-2 rounded-lg text-[13px] font-medium transition-colors no-underline"
           style={{ color: 'var(--text-secondary)', background: 'transparent' }}
-          onClick={() => router.push(`/posts/${params.id}/design`)}
-          onMouseOver={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-          onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
         >
           ← 디자인으로
-        </button>
+        </Link>
       </div>
 
-      <PreviewBody postId={params.id} />
+      <PreviewBody
+        postId={bundle.postId}
+        initialCaption={bundle.caption}
+        initialStatus={bundle.status}
+        initialScheduleAt={bundle.scheduleAt}
+        initialHashtags={bundle.hashtags}
+        slides={bundle.slides}
+      />
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/post/StatusBadge';
 import { PreviewBody } from '@/components/post/PreviewBody';
 import { PostHeaderActions } from '@/components/post/PostHeaderActions';
 import { personaLabel, relativeTime, seriesShort } from '@/lib/format';
+import { loadPreviewBundle } from '@/lib/preview';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function PostDetailPage({
   params,
@@ -14,15 +15,16 @@ export default async function PostDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: post, error } = await supabase
-    .from('posts')
-    .select('id, title, series, persona, status, updated_at')
-    .eq('id', id)
-    .maybeSingle();
+  const [{ data: post }, bundle] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('id, title, series, persona, status, updated_at')
+      .eq('id', id)
+      .maybeSingle(),
+    loadPreviewBundle(id),
+  ]);
 
-  if (error || !post) {
-    notFound();
-  }
+  if (!post || !bundle) notFound();
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,17 +71,21 @@ export default async function PostDetailPage({
             key={step}
             href={`/posts/${post.id}/${step}`}
             className="flex-1 py-2 px-3 rounded-lg text-[13px] font-medium transition-colors text-center no-underline"
-            style={{
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-            }}
+            style={{ background: 'transparent', color: 'var(--text-secondary)' }}
           >
             {label}
           </Link>
         ))}
       </div>
 
-      <PreviewBody postId={post.id} />
+      <PreviewBody
+        postId={bundle.postId}
+        initialCaption={bundle.caption}
+        initialStatus={bundle.status}
+        initialScheduleAt={bundle.scheduleAt}
+        initialHashtags={bundle.hashtags}
+        slides={bundle.slides}
+      />
     </div>
   );
 }
