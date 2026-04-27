@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { UserMenu } from './UserMenu';
 
 const STEPS = [
   { n: '1️⃣', label: '입력',     key: 'input' },
@@ -84,12 +85,7 @@ export function TopBar({
         >
           {saveStatus === 'saving' ? '저장 중...' : '저장됨 ✓'}
         </span>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold"
-          style={{ background: 'var(--brand-accent)', color: '#003320' }}
-        >
-          B
-        </div>
+        <UserMenu />
       </div>
     </header>
   );

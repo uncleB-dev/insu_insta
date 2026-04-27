@@ -1,19 +1,47 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('ben@unclebstudio.com');
-  const [pw, setPw] = useState('');
+function LoginInner() {
+  const params = useSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.get('error') === 'auth_failed') {
+      setError('인증에 실패했어요. 다시 시도해주세요.');
+    }
+  }, [params]);
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const next = params.get('next') ?? '/';
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      (typeof window !== 'undefined' ? window.location.origin : '');
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
 
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-8 p-10"
       style={{ background: 'var(--bg-primary)' }}
     >
-      {/* 로고 */}
       <div className="flex flex-col items-center gap-2 text-center">
         <span className="text-[42px]">🟢</span>
         <h1
@@ -27,62 +55,76 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* 로그인 카드 */}
       <div
         className="flex flex-col gap-4 p-8 rounded-xl border"
         style={{ width: 400, background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
       >
-        <div className="flex flex-col gap-2">
-          <label className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-            이메일
-          </label>
-          <input
-            className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none transition-colors"
-            style={{
-              background: 'var(--bg-tertiary)',
-              borderColor: 'var(--border)',
-              color: 'var(--text-primary)',
-            }}
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            type="email"
-            onFocus={e => (e.target.style.borderColor = 'var(--brand-accent)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-            비밀번호
-          </label>
-          <input
-            className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none transition-colors"
-            style={{
-              background: 'var(--bg-tertiary)',
-              borderColor: 'var(--border)',
-              color: 'var(--text-primary)',
-            }}
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-            type="password"
-            placeholder="••••••••"
-            onFocus={e => (e.target.style.borderColor = 'var(--brand-accent)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-        </div>
         <button
-          className="w-full py-3 rounded-lg font-semibold text-[14px] mt-2 transition-colors"
-          style={{ background: 'var(--brand-accent)', color: '#003320' }}
-          onClick={() => router.push('/')}
-          onMouseOver={e => (e.currentTarget.style.background = 'var(--brand-accent-hover)')}
-          onMouseOut={e => (e.currentTarget.style.background = 'var(--brand-accent)')}
+          className="w-full py-3 rounded-lg font-semibold text-[14px] flex items-center justify-center gap-2.5 transition-colors disabled:opacity-50"
+          style={{ background: '#fff', color: '#1f2937', border: '1px solid var(--border)' }}
+          onClick={handleGoogle}
+          disabled={loading}
+          onMouseOver={(e) => {
+            if (!loading) e.currentTarget.style.background = '#f3f4f6';
+          }}
+          onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
         >
-          로그인 →
+          <GoogleIcon />
+          <span>{loading ? 'Google로 이동 중…' : 'Google 계정으로 로그인'}</span>
         </button>
+
+        {error && (
+          <div
+            className="text-[12px] px-3 py-2 rounded-md"
+            style={{
+              background: 'rgba(255,77,109,0.12)',
+              color: 'var(--status-red)',
+              border: '1px solid var(--status-red)',
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <p className="text-[12px] text-center m-0" style={{ color: 'var(--text-muted)' }}>
+          본인 전용 도구입니다. 등록된 Google 계정만 접근 가능합니다.
+        </p>
       </div>
 
       <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
-        © 2026 unclebstudio · Phase 1 · 본인 전용
+        © 2026 unclebstudio · Phase 1
       </p>
     </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+      <path
+        fill="#4285F4"
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+      />
+      <path
+        fill="#34A853"
+        d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.836.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"
+      />
+      <path
+        fill="#EA4335"
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"
+      />
+    </svg>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }
