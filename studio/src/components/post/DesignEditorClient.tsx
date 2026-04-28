@@ -26,6 +26,7 @@ export type DesignSlide = {
   speaker: Speaker;
   main: string;
   sub: string;
+  emphasis: string[];
   layout: string;
   blur: number;
   overlay: number;
@@ -44,17 +45,13 @@ export type LibraryPhoto = {
   src: string;
 };
 
-const LAYOUTS: { id: string; name: string; best: PrincipleKey[] }[] = [
-  { id: 'A', name: '카톡 좌측',  best: ['hook', 'problem', 'doubt'] },
-  { id: 'B', name: '카톡 우측',  best: ['problem', 'doubt'] },
-  { id: 'C', name: 'Q&A 박스',   best: ['solution', 'doubt'] },
-  { id: 'D', name: '구조도',     best: ['solution'] },
-  { id: 'E', name: '풀블리드',   best: ['hook', 'scarcity'] },
-  { id: 'F', name: '인용 카드',  best: ['scarcity', 'cta'] },
-  { id: 'G', name: '단순 타이틀', best: ['hook'] },
-  { id: 'H', name: '리스트 카드', best: ['solution'] },
-  { id: 'I', name: 'CTA 마감',    best: ['cta'] },
-];
+// Templates now come from DB (slide-templates feature) — passed as props.
+export type DesignTemplate = {
+  slug: string;
+  name: string;
+  description: string | null;
+  default_for_principle: PrincipleKey | null;
+};
 
 const ACCENT_MAP: Record<string, string> = {
   green: '#00FF88',
@@ -205,10 +202,12 @@ export function DesignEditorClient({
   postId,
   initialSlides,
   libraryPhotos,
+  templates,
 }: {
   postId: string;
   initialSlides: DesignSlide[];
   libraryPhotos: LibraryPhoto[];
+  templates: DesignTemplate[];
 }) {
   const router = useRouter();
   const [slides, setSlides] = useState<DesignSlide[]>(initialSlides);
@@ -471,12 +470,12 @@ export function DesignEditorClient({
                 레이아웃 템플릿
               </div>
               <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                {LAYOUTS.map((L) => {
-                  const isBest = L.best.includes(sel.principle);
-                  const isOn = L.id === sel.layout;
+                {templates.map((t) => {
+                  const isBest = t.default_for_principle === sel.principle;
+                  const isOn = t.slug === sel.layout;
                   return (
                     <div
-                      key={L.id}
+                      key={t.slug}
                       className="flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer relative transition-all"
                       style={{
                         aspectRatio: '1/1',
@@ -489,19 +488,20 @@ export function DesignEditorClient({
                         opacity: isBest || isOn ? 1 : 0.55,
                         padding: 6,
                       }}
-                      onClick={() => editSelected({ layout: L.id })}
+                      onClick={() => editSelected({ layout: t.slug })}
+                      title={t.description ?? undefined}
                     >
                       <span
-                        className="text-[14px] font-bold"
-                        style={{ color: isOn ? 'var(--brand-accent)' : 'var(--text-primary)' }}
+                        className="text-[18px]"
+                        style={{ lineHeight: 1 }}
                       >
-                        {L.id}
+                        {t.name.split(' ')[0]}
                       </span>
                       <span
                         className="text-[9px] text-center leading-tight"
                         style={{ color: 'var(--text-muted)' }}
                       >
-                        {L.name}
+                        {t.name.split(' ').slice(1).join(' ')}
                       </span>
                       {isBest && (
                         <span

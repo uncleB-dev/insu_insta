@@ -38,7 +38,7 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     supabase
       .from('slides')
       .select(
-        `id, ord, principle, speaker, main_text, sub_text,
+        `id, ord, principle, speaker, main_text, sub_text, emphasis,
          layout, blur, overlay, text_pos, accent_color, bg_photo_id,
          main_font_size, sub_font_size, line_height,
          bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
@@ -60,6 +60,7 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     speaker: Speaker;
     main_text: string;
     sub_text: string | null;
+    emphasis: string[] | null;
     layout: string | null;
     blur: number | null;
     overlay: number | null;
@@ -78,7 +79,8 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     speaker: r.speaker,
     main: r.main_text,
     sub: r.sub_text ?? '',
-    layout: r.layout ?? 'A',
+    emphasis: r.emphasis ?? [],
+    layout: r.layout ?? 'msg_left',
     blur: r.blur ?? 0,
     overlay: r.overlay ?? 50,
     text_pos: r.text_pos ?? 'mid',

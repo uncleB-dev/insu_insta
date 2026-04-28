@@ -7,8 +7,11 @@ import { createClient } from '@/lib/supabase/client';
 import {
   deleteLibraryPhotoAction,
   registerLibraryPhotoAction,
+  toggleTemplateAction,
 } from '@/app/(chrome)/library/actions';
 import { generateBackgroundAction } from '@/app/(chrome)/posts/[id]/design/actions';
+import { SlideCanvas, type CanvasSlide } from '@/components/post/SlideCanvas';
+import type { Principle } from '@/lib/supabase/types';
 
 export type LibraryPhotoRow = {
   id: string;
@@ -18,14 +21,70 @@ export type LibraryPhotoRow = {
   created_at: string;
 };
 
-const TEMPLATE_LAYOUTS = [
-  { id: 'bold', label: '볼드 텍스트', emoji: '🅱️', desc: '큰 텍스트 중심' },
-  { id: 'split', label: '좌우 분할', emoji: '◧', desc: '이미지 + 텍스트' },
-  { id: 'minimal', label: '미니멀', emoji: '◻', desc: '여백 중심' },
-  { id: 'data', label: '데이터 카드', emoji: '📊', desc: '숫자·통계 강조' },
-  { id: 'quote', label: '인용구', emoji: '❝', desc: '짧은 메시지' },
-  { id: 'list', label: '리스트형', emoji: '☰', desc: '3·5항목 정리' },
-];
+export type LibraryTemplateRow = {
+  slug: string;
+  name: string;
+  description: string | null;
+  default_for_principle: Principle | null;
+  active: boolean;
+  sort_order: number;
+};
+
+// Sample slide data for template previews
+const PRINCIPLE_LABEL: Record<Principle, string> = {
+  hook: '후킹',
+  problem: '문제점',
+  solution: '해결책',
+  doubt: '의심제거',
+  scarcity: '희소성',
+  cta: 'CTA',
+};
+
+function sampleSlideForTemplate(slug: string): CanvasSlide {
+  const base: CanvasSlide = {
+    principle: 'hook',
+    main: '여기에 메시지가 들어가요',
+    sub: '보조 설명 텍스트',
+    layout: slug,
+    blur: 6,
+    overlay: 50,
+    text_pos: 'mid',
+    accent_color: 'green',
+    bg_src: `https://picsum.photos/seed/tpl_${slug}/600/600`,
+    ord: 1,
+    emphasis: [],
+  };
+  // Per-template tweaks for natural preview
+  switch (slug) {
+    case 'data_card':
+      return { ...base, main: '연 1억 넘을 수도', emphasis: ['1억'] };
+    case 'checklist':
+      return {
+        ...base,
+        main: '비급여통합\n진단비\n실손',
+        emphasis: ['비급여통합', '진단비', '실손'],
+      };
+    case 'compare_box':
+      return {
+        ...base,
+        main: '저렴한 보험\n실손만 의지',
+        emphasis: ['저렴한 보험', '실손만 의지'],
+      };
+    case 'quote_card':
+      return { ...base, main: '건강할 때 준비해야 의미가 있어요' };
+    case 'cta_card':
+      return { ...base, main: '댓글에 \'체크\' 남겨주세요', sub: '자료 보내드려요' };
+    case 'qa_box':
+      return { ...base, main: '실손 하나만 있으면 되는 거 아니에요?' };
+    case 'msg_left':
+      return { ...base, main: '삼촌 이거 진짜야?' };
+    case 'msg_right':
+      return { ...base, main: '진짜야. 정리해줄게.' };
+    case 'bold_title':
+    default:
+      return { ...base, main: '하루 입원비 20만원' };
+  }
+}
 
 const SOURCE_LABEL: Record<LibraryPhotoRow['source'], string> = {
   upload: '업로드',
@@ -48,9 +107,16 @@ type PendingUpload = {
 
 type AiPhase = 'idle' | 'generated';
 
-export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRow[] }) {
+export function LibraryClient({
+  initialPhotos,
+  initialTemplates,
+}: {
+  initialPhotos: LibraryPhotoRow[];
+  initialTemplates: LibraryTemplateRow[];
+}) {
   const router = useRouter();
   const [photos, setPhotos] = useState(initialPhotos);
+  const [templates, setTemplates] = useState(initialTemplates);
   const [tab, setTab] = useState<Tab>('photos');
   const [filter, setFilter] = useState<SourceFilter>('all');
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -470,35 +536,110 @@ export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRo
       )}
 
       {tab === 'templates' && (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          {TEMPLATE_LAYOUTS.map((tpl) => (
-            <div
-              key={tpl.id}
-              className="rounded-xl border p-6 flex flex-col gap-3 cursor-pointer transition-all"
-              style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
-              onClick={() => toast(`'${tpl.label}' 템플릿 — 다음 phase에서 연결됩니다`)}
-            >
-              <div className="text-[40px]">{tpl.emoji}</div>
-              <div>
-                <div className="text-[16px] font-semibold mb-0.5">{tpl.label}</div>
-                <div className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-                  {tpl.desc}
-                </div>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {['후킹', '문제점', '해결책'].map((p) => (
-                  <span
-                    key={p}
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
+        <>
+          <p className="text-[12px] m-0" style={{ color: 'var(--text-secondary)' }}>
+            슬라이드 시각 템플릿 — 비활성화하면 디자인 페이지의 레이아웃 선택에서 사라집니다.
+          </p>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            {templates.map((tpl) => {
+              const sample = sampleSlideForTemplate(tpl.slug);
+              return (
+                <div
+                  key={tpl.slug}
+                  className="rounded-xl border p-4 flex flex-col gap-3 transition-all"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)',
+                    opacity: tpl.active ? 1 : 0.5,
+                  }}
+                >
+                  {/* 미니 미리보기 */}
+                  <div
+                    className="rounded-lg overflow-hidden"
+                    style={{ width: '100%', aspectRatio: '1/1', position: 'relative' }}
                   >
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                    <div
+                      style={{
+                        width: 200,
+                        height: 200,
+                        transform: 'scale(1)',
+                        transformOrigin: 'top left',
+                        position: 'absolute',
+                        inset: 0,
+                      }}
+                    >
+                      <SlideCanvas slide={sample} size={200} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[16px] font-semibold mb-0.5">{tpl.name}</div>
+                    {tpl.description && (
+                      <div className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                        {tpl.description}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    {tpl.default_for_principle ? (
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                        style={{
+                          background: 'var(--brand-accent-bg)',
+                          color: 'var(--brand-accent)',
+                          border: '1px solid var(--brand-accent)',
+                        }}
+                      >
+                        ★ {PRINCIPLE_LABEL[tpl.default_for_principle]} 기본
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+
+                    {/* 활성/비활성 스위치 */}
+                    <div
+                      className="relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0"
+                      style={{
+                        background: tpl.active ? 'var(--brand-accent)' : 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-strong)',
+                      }}
+                      onClick={() => {
+                        const next = !tpl.active;
+                        setTemplates((prev) =>
+                          prev.map((t) => (t.slug === tpl.slug ? { ...t, active: next } : t)),
+                        );
+                        startTransition(async () => {
+                          const res = await toggleTemplateAction(tpl.slug, next);
+                          if (res.error) {
+                            toast.error(`상태 변경 실패: ${res.error}`);
+                            setTemplates((prev) =>
+                              prev.map((t) =>
+                                t.slug === tpl.slug ? { ...t, active: !next } : t,
+                              ),
+                            );
+                          } else {
+                            toast(`✓ ${tpl.name} ${next ? '활성' : '비활성'}`);
+                          }
+                        });
+                      }}
+                    >
+                      <div
+                        className="absolute top-0.5 rounded-full transition-all"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          background: tpl.active ? '#003320' : 'var(--text-muted)',
+                          left: tpl.active ? 'calc(100% - 18px)' : 2,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* AI generation modal — library-ai-generation */}

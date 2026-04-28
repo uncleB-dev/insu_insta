@@ -92,16 +92,51 @@ export async function generatePostAction(
     return { error: `게시물 생성 실패: ${postErr?.message ?? 'unknown'}` };
   }
 
-  const slideRows = slides.map((s, i) => ({
-    post_id: post.id,
-    ord: i + 1,
-    principle: s.principle,
-    speaker: s.speaker,
-    scene: s.scene,
-    main_text: s.main,
-    sub_text: s.sub,
-    emphasis: s.emphasis,
-  }));
+  // slide-templates: load active templates and assign per principle
+  const { data: tplRows } = await supabase
+    .from('templates')
+    .select('slug, default_for_principle, sort_order')
+    .eq('active', true)
+    .order('sort_order', { ascending: true });
+
+  const tplByPrinciple = new Map<string, string[]>();
+  const fallbackTpl =
+    (tplRows?.find((t) => t.slug === 'bold_title')?.slug as string | undefined) ??
+    (tplRows?.[0]?.slug as string | undefined) ??
+    'bold_title';
+
+  for (const t of tplRows ?? []) {
+    if (!t.default_for_principle) continue;
+    const arr = tplByPrinciple.get(t.default_for_principle) ?? [];
+    arr.push(t.slug);
+    tplByPrinciple.set(t.default_for_principle, arr);
+  }
+
+  // Track per-principle counter to alternate between matching templates
+  const principleCounters = new Map<string, number>();
+
+  const slideRows = slides.map((s, i) => {
+    const candidates = tplByPrinciple.get(s.principle) ?? [];
+    let layout: string;
+    if (candidates.length === 0) {
+      layout = fallbackTpl;
+    } else {
+      const idx = principleCounters.get(s.principle) ?? 0;
+      layout = candidates[idx % candidates.length];
+      principleCounters.set(s.principle, idx + 1);
+    }
+    return {
+      post_id: post.id,
+      ord: i + 1,
+      principle: s.principle,
+      speaker: s.speaker,
+      scene: s.scene,
+      main_text: s.main,
+      sub_text: s.sub,
+      emphasis: s.emphasis,
+      layout,
+    };
+  });
 
   const { error: slidesErr } = await supabase.from('slides').insert(slideRows);
 

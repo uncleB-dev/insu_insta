@@ -2,7 +2,7 @@
 // Single source of truth for slide visuals; respects per-slide font size + line height
 // overrides with layout-based defaults as fallback.
 //
-// Design Ref: docs/01-plan/features/design-font-size.plan.md §7.2
+// Design Ref: docs/01-plan/features/slide-templates.plan.md §7.2 — 9 distinct templates
 
 import type { Principle } from '@/lib/supabase/types';
 
@@ -17,11 +17,10 @@ export type CanvasSlide = {
   accent_color: string;
   bg_src: string;
   ord: number;
+  emphasis?: string[];
   /** null/undefined = use layout default */
   main_font_size?: number | null;
-  /** null/undefined = use layout default */
   sub_font_size?: number | null;
-  /** null/undefined = use layout default (1.4) */
   line_height?: number | null;
 };
 
@@ -32,23 +31,57 @@ const ACCENT_MAP: Record<string, string> = {
   white: '#FFFFFF',
 };
 
-// Gemini sometimes returns **bold** markdown markers in text.
-// We use the `emphasis` array for true bolding, so strip the markers from display.
+// ─── Layout slug normalization (backward compat with A~I) ───
+const LEGACY_TO_SLUG: Record<string, string> = {
+  A: 'msg_left',
+  B: 'msg_right',
+  C: 'qa_box',
+  D: 'bold_title',
+  E: 'bold_title',
+  F: 'quote_card',
+  G: 'bold_title',
+  H: 'checklist',
+  I: 'cta_card',
+};
+
+export function normalizeLayout(layout: string): string {
+  if (!layout) return 'msg_left';
+  return LEGACY_TO_SLUG[layout] ?? layout;
+}
+
+// Strip stray markdown markers (Gemini sometimes returns **bold**)
 function stripMarkdown(text: string): string {
   if (!text) return text;
   return text
-    .replace(/\*\*(.+?)\*\*/g, '$1') // **bold**
-    .replace(/\*(.+?)\*/g, '$1')       // *italic*
-    .replace(/__(.+?)__/g, '$1')       // __bold__
-    .replace(/_(.+?)_/g, '$1');         // _italic_
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1');
 }
 
 // ─── Layout-based defaults ──────────────────────────────────
-// Plan SC-8: backward compat — null fields render identically to pre-migration.
 export function defaultMainFontSize(layout: string): number {
-  if (layout === 'A' || layout === 'B') return 20;
-  if (layout === 'C') return 22;
-  return 28; // D~I
+  switch (normalizeLayout(layout)) {
+    case 'msg_left':
+    case 'msg_right':
+      return 20;
+    case 'qa_box':
+      return 22;
+    case 'bold_title':
+      return 36;
+    case 'data_card':
+      return 18; // label only; the big number is auto-sized
+    case 'quote_card':
+      return 26;
+    case 'checklist':
+      return 18;
+    case 'compare_box':
+      return 16;
+    case 'cta_card':
+      return 26;
+    default:
+      return 28;
+  }
 }
 
 export function defaultSubFontSize(_layout: string): number {
@@ -80,6 +113,20 @@ export function effectiveLineHeight(
   return override ?? defaultLineHeight(layout);
 }
 
+/** Split lines for checklist / compare templates */
+function splitLines(text: string, count: number): string[] {
+  const lines = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length >= count) return lines.slice(0, count);
+  // fallback: split by sentence punctuation
+  const sentences = text.split(/[.!?。!?]+/).map((s) => s.trim()).filter(Boolean);
+  if (sentences.length >= count) return sentences.slice(0, count);
+  // last resort: pad with original full text
+  return Array.from({ length: count }, (_, i) => lines[i] ?? sentences[i] ?? text);
+}
+
 export function SlideCanvas({
   slide,
   size = 540,
@@ -97,18 +144,363 @@ export function SlideCanvas({
   const bg =
     slide.bg_src || `https://picsum.photos/seed/insu${slide.ord + 10}/800/800`;
 
-  // Plan SC-7: scale paddings/text proportionally to size for ZIP capture at 1080
   const scale = size / 540;
   const px = (n: number) => n * scale;
+  const layout = normalizeLayout(slide.layout);
 
-  // Effective font sizes (override with fallback to layout default)
-  const mainSize = effectiveMainFontSize(slide.layout, slide.main_font_size);
-  const subSize = effectiveSubFontSize(slide.layout, slide.sub_font_size);
-  const lh = effectiveLineHeight(slide.layout, slide.line_height);
-
-  // Strip stray markdown markers from AI-generated text
+  const mainSize = effectiveMainFontSize(layout, slide.main_font_size);
+  const subSize = effectiveSubFontSize(layout, slide.sub_font_size);
+  const lh = effectiveLineHeight(layout, slide.line_height);
   const mainText = stripMarkdown(slide.main);
   const subText = stripMarkdown(slide.sub);
+  const emphasis = (slide.emphasis ?? []).map(stripMarkdown);
+
+  // ─── Render content based on layout ─────────────────────────
+  const renderContent = () => {
+    switch (layout) {
+      case 'msg_left':
+      case 'msg_right': {
+        const isLeft = layout === 'msg_left';
+        return (
+          <div
+            style={{
+              alignSelf: isLeft ? 'flex-start' : 'flex-end',
+              maxWidth: '80%',
+              background: isLeft ? '#fff' : '#FEE500',
+              color: '#000',
+              padding: `${px(14)}px ${px(18)}px`,
+              borderRadius: isLeft
+                ? `${px(4)}px ${px(16)}px ${px(16)}px ${px(16)}px`
+                : `${px(16)}px ${px(4)}px ${px(16)}px ${px(16)}px`,
+              fontSize: px(mainSize),
+              fontWeight: 600,
+              lineHeight: lh,
+              wordBreak: 'keep-all',
+            }}
+          >
+            {mainText}
+          </div>
+        );
+      }
+
+      case 'qa_box': {
+        return (
+          <div
+            style={{
+              background: 'rgba(0,0,0,0.6)',
+              border: `${px(2)}px solid ${accent}`,
+              borderRadius: px(12),
+              padding: px(24),
+            }}
+          >
+            <div
+              style={{
+                color: accent,
+                fontSize: px(14),
+                fontWeight: 700,
+                marginBottom: px(8),
+              }}
+            >
+              Q.
+            </div>
+            <div
+              style={{
+                fontSize: px(mainSize),
+                fontWeight: 700,
+                lineHeight: lh,
+                wordBreak: 'keep-all',
+                color: '#fff',
+              }}
+            >
+              {mainText}
+            </div>
+          </div>
+        );
+      }
+
+      case 'data_card': {
+        // First emphasis item is the big number/highlight; main becomes the label
+        const bigText = emphasis[0] ?? mainText.split(/\s/)[0];
+        const labelText = emphasis[0]
+          ? mainText
+          : mainText.replace(bigText, '').trim() || mainText;
+        return (
+          <div
+            style={{
+              background: 'rgba(0,0,0,0.65)',
+              border: `${px(2)}px solid ${accent}`,
+              borderRadius: px(16),
+              padding: `${px(36)}px ${px(28)}px`,
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                color: accent,
+                fontSize: px(72),
+                fontWeight: 900,
+                lineHeight: 1,
+                marginBottom: px(12),
+                wordBreak: 'keep-all',
+              }}
+            >
+              {bigText}
+            </div>
+            <div
+              style={{
+                color: '#fff',
+                fontSize: px(mainSize),
+                fontWeight: 600,
+                lineHeight: lh,
+                wordBreak: 'keep-all',
+              }}
+            >
+              {labelText}
+            </div>
+          </div>
+        );
+      }
+
+      case 'quote_card': {
+        return (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: `0 ${px(16)}px`,
+              color: '#fff',
+            }}
+          >
+            <div
+              style={{
+                color: accent,
+                fontSize: px(64),
+                lineHeight: 0.6,
+                marginBottom: px(8),
+                fontWeight: 900,
+              }}
+            >
+              "
+            </div>
+            <div
+              style={{
+                fontSize: px(mainSize),
+                fontWeight: 700,
+                lineHeight: lh,
+                fontStyle: 'italic',
+                wordBreak: 'keep-all',
+                textShadow: `0 ${px(2)}px ${px(8)}px rgba(0,0,0,0.6)`,
+              }}
+            >
+              {mainText}
+            </div>
+            <div
+              style={{
+                color: accent,
+                fontSize: px(64),
+                lineHeight: 0.6,
+                marginTop: px(8),
+                fontWeight: 900,
+              }}
+            >
+              "
+            </div>
+          </div>
+        );
+      }
+
+      case 'checklist': {
+        const items =
+          emphasis.length >= 2
+            ? emphasis.slice(0, 5)
+            : splitLines(mainText, 3);
+        return (
+          <div
+            style={{
+              background: 'rgba(0,0,0,0.55)',
+              borderRadius: px(16),
+              padding: px(28),
+              display: 'flex',
+              flexDirection: 'column',
+              gap: px(14),
+            }}
+          >
+            {items.map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: px(12),
+                  color: '#fff',
+                  fontSize: px(mainSize),
+                  fontWeight: 600,
+                  lineHeight: lh,
+                  wordBreak: 'keep-all',
+                }}
+              >
+                <span
+                  style={{
+                    color: accent,
+                    fontSize: px(mainSize + 4),
+                    lineHeight: 1,
+                    fontWeight: 900,
+                    flexShrink: 0,
+                  }}
+                >
+                  ✓
+                </span>
+                <span style={{ flex: 1 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case 'compare_box': {
+        const items =
+          emphasis.length >= 2 ? emphasis.slice(0, 2) : splitLines(mainText, 2);
+        const [left, right] = [items[0] ?? mainText, items[1] ?? ''];
+        return (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `1fr ${px(40)}px 1fr`,
+              gap: 0,
+              alignItems: 'stretch',
+              width: '100%',
+            }}
+          >
+            <div
+              style={{
+                background: 'rgba(0,0,0,0.7)',
+                border: `${px(2)}px solid #ff8a8a`,
+                borderRadius: px(12),
+                padding: px(20),
+                textAlign: 'center',
+                color: '#fff',
+                fontSize: px(mainSize),
+                fontWeight: 700,
+                lineHeight: lh,
+                wordBreak: 'keep-all',
+              }}
+            >
+              <div
+                style={{
+                  color: '#ff8a8a',
+                  fontSize: px(12),
+                  fontWeight: 800,
+                  marginBottom: px(8),
+                }}
+              >
+                BEFORE
+              </div>
+              {left}
+            </div>
+            <div
+              style={{
+                color: accent,
+                fontSize: px(28),
+                fontWeight: 900,
+                alignSelf: 'center',
+                textAlign: 'center',
+              }}
+            >
+              VS
+            </div>
+            <div
+              style={{
+                background: 'rgba(0,0,0,0.7)',
+                border: `${px(2)}px solid ${accent}`,
+                borderRadius: px(12),
+                padding: px(20),
+                textAlign: 'center',
+                color: '#fff',
+                fontSize: px(mainSize),
+                fontWeight: 700,
+                lineHeight: lh,
+                wordBreak: 'keep-all',
+              }}
+            >
+              <div
+                style={{
+                  color: accent,
+                  fontSize: px(12),
+                  fontWeight: 800,
+                  marginBottom: px(8),
+                }}
+              >
+                AFTER
+              </div>
+              {right || left}
+            </div>
+          </div>
+        );
+      }
+
+      case 'cta_card': {
+        return (
+          <div
+            style={{
+              background: accent,
+              color: '#0a0a0a',
+              borderRadius: px(16),
+              padding: `${px(28)}px ${px(24)}px`,
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                fontSize: px(mainSize),
+                fontWeight: 900,
+                lineHeight: lh,
+                wordBreak: 'keep-all',
+                marginBottom: subText ? px(10) : 0,
+              }}
+            >
+              {mainText}
+            </div>
+            {subText && (
+              <div
+                style={{
+                  fontSize: px(subSize),
+                  fontWeight: 600,
+                  lineHeight: lh,
+                  wordBreak: 'keep-all',
+                  opacity: 0.85,
+                }}
+              >
+                {subText}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case 'bold_title':
+      default: {
+        return (
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: px(mainSize),
+              fontWeight: 900,
+              lineHeight: lh,
+              color: '#fff',
+              textShadow: `0 ${px(2)}px ${px(12)}px rgba(0,0,0,0.6)`,
+              wordBreak: 'keep-all',
+            }}
+          >
+            {mainText}
+          </div>
+        );
+      }
+    }
+  };
+
+  // sub-text below content (only for layouts that don't render sub inside)
+  const showSubBelow =
+    layout !== 'cta_card' && // cta_card renders sub inside the accent box
+    !!subText;
 
   return (
     <div
@@ -119,8 +511,8 @@ export function SlideCanvas({
         backgroundImage: `url(${bg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        // engagement-polish module 1: friendly Korean font for slide canvas only
-        fontFamily: "'GmarketSans', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+        fontFamily:
+          "'GmarketSans', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
       }}
     >
       <div
@@ -135,68 +527,16 @@ export function SlideCanvas({
         className="absolute inset-0 flex flex-col"
         style={{ justifyContent, color: '#fff', padding: px(32) }}
       >
-        {slide.layout === 'A' || slide.layout === 'B' ? (
-          <div
-            style={{
-              alignSelf: slide.layout === 'A' ? 'flex-start' : 'flex-end',
-              maxWidth: '80%',
-              background: slide.layout === 'A' ? '#fff' : '#FEE500',
-              color: '#000',
-              padding: `${px(14)}px ${px(18)}px`,
-              borderRadius:
-                slide.layout === 'A'
-                  ? `${px(4)}px ${px(16)}px ${px(16)}px ${px(16)}px`
-                  : `${px(16)}px ${px(4)}px ${px(16)}px ${px(16)}px`,
-              fontSize: px(mainSize),
-              fontWeight: 600,
-              lineHeight: lh,
-              wordBreak: 'keep-all',
-            }}
-          >
-            {mainText}
-          </div>
-        ) : slide.layout === 'C' ? (
-          <div
-            style={{
-              background: 'rgba(0,0,0,0.6)',
-              border: `${px(2)}px solid ${accent}`,
-              borderRadius: px(12),
-              padding: px(24),
-            }}
-          >
-            <div
-              style={{ color: accent, fontSize: px(14), fontWeight: 700, marginBottom: px(8) }}
-            >
-              Q.
-            </div>
-            <div
-              style={{ fontSize: px(mainSize), fontWeight: 700, lineHeight: lh, wordBreak: 'keep-all' }}
-            >
-              {mainText}
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              textAlign: 'center',
-              fontSize: px(mainSize),
-              fontWeight: 900,
-              lineHeight: lh,
-              textShadow: `0 ${px(2)}px ${px(12)}px rgba(0,0,0,0.6)`,
-              wordBreak: 'keep-all',
-            }}
-          >
-            {mainText}
-          </div>
-        )}
-        {subText && (
+        {renderContent()}
+        {showSubBelow && (
           <div
             style={{
               marginTop: px(14),
               fontSize: px(subSize),
               lineHeight: lh,
               color: '#ddd',
-              textAlign: ['A', 'B'].includes(slide.layout) ? 'inherit' : 'center',
+              textAlign:
+                layout === 'msg_left' || layout === 'msg_right' ? 'inherit' : 'center',
               textShadow: `0 ${px(1)}px ${px(6)}px rgba(0,0,0,0.6)`,
               wordBreak: 'keep-all',
             }}

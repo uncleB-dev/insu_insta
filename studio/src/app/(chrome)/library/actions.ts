@@ -3,6 +3,23 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
+// slide-templates: toggle active flag for a template
+export async function toggleTemplateAction(
+  slug: string,
+  active: boolean,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('templates')
+    .update({ active })
+    .eq('slug', slug);
+  if (error) return { error: error.message };
+  revalidatePath('/library');
+  // Also revalidate any active design pages so the layout grid updates
+  revalidatePath('/posts', 'layout');
+  return {};
+}
+
 /** Register an uploaded photo in library_photos table.
  * Storage upload itself is performed client-side directly (faster + bypasses
  * the 1MB Server Action body limit).

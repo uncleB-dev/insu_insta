@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import {
   DesignEditorClient,
   type DesignSlide,
+  type DesignTemplate,
   type LibraryPhoto,
 } from '@/components/post/DesignEditorClient';
 import type { Principle, Speaker } from '@/lib/supabase/types';
@@ -14,6 +15,7 @@ type SlideRow = {
   speaker: Speaker;
   main_text: string;
   sub_text: string | null;
+  emphasis: string[] | null;
   layout: string | null;
   blur: number;
   overlay: number;
@@ -31,6 +33,13 @@ type LibraryPhotoRow = {
   src: string;
 };
 
+type TemplateRow = {
+  slug: string;
+  name: string;
+  description: string | null;
+  default_for_principle: Principle | null;
+};
+
 export default async function DesignPage({
   params,
 }: {
@@ -39,13 +48,13 @@ export default async function DesignPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: post }, { data: slidesRows }, { data: photosRows }] =
+  const [{ data: post }, { data: slidesRows }, { data: photosRows }, { data: templatesRows }] =
     await Promise.all([
       supabase.from('posts').select('id, title').eq('id', id).maybeSingle(),
       supabase
         .from('slides')
         .select(
-          `id, ord, principle, speaker, main_text, sub_text, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
+          `id, ord, principle, speaker, main_text, sub_text, emphasis, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
         )
         .eq('post_id', id)
         .order('ord', { ascending: true }),
@@ -54,6 +63,12 @@ export default async function DesignPage({
         .select('id, src')
         .order('created_at', { ascending: false })
         .limit(60),
+      // slide-templates: load only active templates ordered by sort_order
+      supabase
+        .from('templates')
+        .select('slug, name, description, default_for_principle')
+        .eq('active', true)
+        .order('sort_order', { ascending: true }),
     ]);
 
   if (!post) notFound();
@@ -66,7 +81,8 @@ export default async function DesignPage({
       speaker: row.speaker,
       main: row.main_text,
       sub: row.sub_text ?? '',
-      layout: row.layout ?? 'A',
+      emphasis: row.emphasis ?? [],
+      layout: row.layout ?? 'msg_left',
       blur: row.blur ?? 0,
       overlay: row.overlay ?? 50,
       text_pos: row.text_pos ?? 'mid',
@@ -83,11 +99,21 @@ export default async function DesignPage({
     (p) => ({ id: p.id, src: p.src }),
   );
 
+  const templates: DesignTemplate[] = ((templatesRows ?? []) as TemplateRow[]).map(
+    (t) => ({
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      default_for_principle: t.default_for_principle,
+    }),
+  );
+
   return (
     <DesignEditorClient
       postId={id}
       initialSlides={slides}
       libraryPhotos={libraryPhotos}
+      templates={templates}
     />
   );
 }
