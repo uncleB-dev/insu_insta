@@ -8,6 +8,7 @@ import {
   deleteLibraryPhotoAction,
   registerLibraryPhotoAction,
 } from '@/app/(chrome)/library/actions';
+import { generateBackgroundAction } from '@/app/(chrome)/posts/[id]/design/actions';
 
 export type LibraryPhotoRow = {
   id: string;
@@ -45,6 +46,8 @@ type PendingUpload = {
   message?: string;
 };
 
+type AiPhase = 'idle' | 'generated';
+
 export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRow[] }) {
   const router = useRouter();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -55,6 +58,14 @@ export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRo
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // AI generation modal (library-ai-generation)
+  const [showAi, setShowAi] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiPhase, setAiPhase] = useState<AiPhase>('idle');
+  const [lastGenerated, setLastGenerated] = useState<{ id: string; src: string } | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   const filtered = photos.filter((p) => {
     if (filter !== 'all' && p.source !== filter) return false;
@@ -164,6 +175,77 @@ export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRo
     if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
   };
 
+  // ─── AI generation (library-ai-generation) ───────────────────────────
+  // Plan SC-2: 1 image per click via existing generateBackgroundAction with bindToSlide:false
+  const generateOne = async (prompt: string): Promise<{ id: string; src: string } | null> => {
+    const res = await generateBackgroundAction({
+      prompt,
+      bindToSlide: false,
+    });
+    if (res.error || !res.photo) {
+      toast.error(res.error ?? 'AI 생성 실패');
+      return null;
+    }
+    const newPhoto = { id: res.photo.id, src: res.photo.src };
+    setPhotos((prev) => [
+      {
+        id: newPhoto.id,
+        src: newPhoto.src,
+        source: 'upload',
+        uses: 0,
+        created_at: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    return newPhoto;
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error('프롬프트를 입력해주세요');
+      return;
+    }
+    setAiBusy(true);
+    const photo = await generateOne(aiPrompt.trim());
+    setAiBusy(false);
+    if (photo) {
+      setLastGenerated(photo);
+      setAiPhase('generated');
+      toast('✓ AI 생성 완료');
+    }
+  };
+
+  // Plan SC-3: 3 sequential variations of the same prompt
+  const handleBatch3 = async () => {
+    if (!aiPrompt.trim() || aiBusy) return;
+    setAiBusy(true);
+    setBatchProgress({ done: 0, total: 3 });
+    const variations = [' (variation A)', ' (variation B)', ' (variation C)'];
+    for (let i = 0; i < variations.length; i++) {
+      const photo = await generateOne(aiPrompt.trim() + variations[i]);
+      if (photo) setLastGenerated(photo);
+      setBatchProgress({ done: i + 1, total: 3 });
+    }
+    setAiBusy(false);
+    setBatchProgress(null);
+    toast('✓ 3장 추가 생성 완료');
+  };
+
+  const resetAi = () => {
+    setShowAi(false);
+    setAiPrompt('');
+    setAiPhase('idle');
+    setLastGenerated(null);
+    setBatchProgress(null);
+  };
+
+  const startAnotherPrompt = () => {
+    setAiPrompt('');
+    setAiPhase('idle');
+    setLastGenerated(null);
+    setBatchProgress(null);
+  };
+
   // ─── Delete ───────────────────────────────────────────────────────────
   const handleDelete = (id: string) => {
     if (!window.confirm('이 사진을 삭제할까요?')) return;
@@ -187,13 +269,30 @@ export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRo
             배경 사진 및 슬라이드 템플릿 관리
           </p>
         </div>
-        <button
-          className="px-4 py-2.5 rounded-lg font-semibold text-[14px] transition-colors"
-          style={{ background: 'var(--brand-accent)', color: '#003320', border: 'none' }}
-          onClick={onPickFiles}
-        >
-          ＋ 업로드
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="px-4 py-2.5 rounded-lg font-semibold text-[14px] transition-colors"
+            style={{
+              background: 'var(--brand-accent-bg)',
+              color: 'var(--brand-accent)',
+              border: '1px solid var(--brand-accent)',
+            }}
+            onClick={() => {
+              setAiPhase('idle');
+              setAiPrompt('');
+              setShowAi(true);
+            }}
+          >
+            🎨 AI 생성
+          </button>
+          <button
+            className="px-4 py-2.5 rounded-lg font-semibold text-[14px] transition-colors"
+            style={{ background: 'var(--brand-accent)', color: '#003320', border: 'none' }}
+            onClick={onPickFiles}
+          >
+            ＋ 업로드
+          </button>
+        </div>
       </div>
 
       <div
@@ -399,6 +498,157 @@ export function LibraryClient({ initialPhotos }: { initialPhotos: LibraryPhotoRo
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* AI generation modal — library-ai-generation */}
+      {showAi && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => !aiBusy && resetAi()}
+        >
+          <div
+            className="p-7 rounded-2xl border flex flex-col gap-4"
+            style={{
+              background: 'var(--bg-secondary)',
+              borderColor: 'var(--border)',
+              width: 540,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[24px]">🎨</span>
+              <h2 className="text-[20px] font-bold m-0">
+                AI 배경 생성 {aiPhase === 'generated' ? '— 결과' : ''}
+              </h2>
+            </div>
+
+            {aiPhase === 'idle' && (
+              <>
+                <p className="text-[12px] m-0" style={{ color: 'var(--text-secondary)' }}>
+                  슬라이드와 무관한 스톡 사진을 라이브러리에 추가합니다. 디자인 단계에서 어떤
+                  게시물에든 골라 쓸 수 있어요.
+                </p>
+                <textarea
+                  className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none resize-none font-mono"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                    minHeight: 160,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                  placeholder="예: 한국 아파트 단지, 늦가을 노을, 따뜻한 톤, 인스타 카드뉴스 배경, 1:1, 텍스트 영역 비워둔 깔끔한 구성"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  disabled={aiBusy}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    className="px-4 py-2 rounded-lg text-[14px] font-medium disabled:opacity-50"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                    disabled={aiBusy}
+                    onClick={resetAi}
+                  >
+                    취소
+                  </button>
+                  <button
+                    className="px-4 py-2 rounded-lg text-[14px] font-semibold disabled:opacity-50"
+                    style={{ background: 'var(--brand-accent)', color: '#003320', border: 'none' }}
+                    disabled={aiBusy || !aiPrompt.trim()}
+                    onClick={handleAiGenerate}
+                  >
+                    {aiBusy ? '🎨 생성 중… (10~20초)' : '✨ 생성'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {aiPhase === 'generated' && (
+              <>
+                {/* 마지막 생성 결과 미리보기 */}
+                {lastGenerated && (
+                  <div
+                    className="rounded-lg overflow-hidden"
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1/1',
+                      backgroundImage: `url(${lastGenerated.src})`,
+                      backgroundSize: 'cover',
+                      border: '1px solid var(--border)',
+                    }}
+                  />
+                )}
+                <p className="text-[12px] m-0" style={{ color: 'var(--text-secondary)' }}>
+                  생성된 사진은 이미 라이브러리에 추가되었습니다. 같은 스타일로 더 만들거나, 다른 프롬프트로 시작할 수 있어요.
+                </p>
+
+                {/* 진행률 */}
+                {batchProgress && (
+                  <div
+                    className="px-3 py-2 rounded-lg text-[13px]"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--brand-accent)',
+                      border: '1px solid var(--brand-accent)',
+                    }}
+                  >
+                    🎨 일괄 생성 진행 중… ({batchProgress.done}/{batchProgress.total})
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <button
+                    className="w-full py-2.5 rounded-lg text-[13px] font-semibold disabled:opacity-50"
+                    style={{
+                      background: 'var(--brand-accent-bg)',
+                      color: 'var(--brand-accent)',
+                      border: '1px solid var(--brand-accent)',
+                    }}
+                    disabled={aiBusy}
+                    onClick={handleBatch3}
+                  >
+                    🎨 유사 프롬프트로 3장 더 (~$0.117)
+                  </button>
+                  <button
+                    className="w-full py-2.5 rounded-lg text-[13px] font-medium disabled:opacity-50"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                    disabled={aiBusy}
+                    onClick={startAnotherPrompt}
+                  >
+                    ✨ 다른 프롬프트로 1장 더
+                  </button>
+                  <button
+                    className="w-full py-2.5 rounded-lg text-[13px] font-medium disabled:opacity-50"
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid transparent',
+                    }}
+                    disabled={aiBusy}
+                    onClick={resetAi}
+                  >
+                    닫기
+                  </button>
+                </div>
+              </>
+            )}
+
+            <p className="text-[11px] m-0 text-center" style={{ color: 'var(--text-muted)' }}>
+              1장당 약 $0.039 (Gemini Nano Banana)
+            </p>
+          </div>
         </div>
       )}
     </div>
