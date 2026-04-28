@@ -34,6 +34,8 @@ export default async function PreviewPage({
         initialStatus={bundle.status}
         initialScheduleAt={bundle.scheduleAt}
         initialHashtags={bundle.hashtags}
+        initialCtaKind={bundle.ctaKind}
+        initialRewardLink={bundle.rewardLink}
         slides={bundle.slides}
       />
     </div>

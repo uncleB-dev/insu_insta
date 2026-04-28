@@ -13,6 +13,7 @@ export type GeneratePostInput = {
   tone: 'soft' | 'normal' | 'strong';
   slideCount: number;
   cta: string;
+  rewardLink?: string | null;
 };
 
 export type GeneratePostResult = { postId?: string; error?: string };
@@ -57,6 +58,7 @@ export async function generatePostAction(
     tone: input.tone,
     slideCount: input.slideCount,
     cta: input.cta,
+    rewardLink: input.rewardLink ?? null,
     promptBody: version.body,
   };
 
@@ -81,6 +83,7 @@ export async function generatePostAction(
       facts: input.facts,
       tone: input.tone,
       cta_kind: input.cta,
+      reward_link: input.rewardLink ?? null,
     })
     .select('id')
     .single();

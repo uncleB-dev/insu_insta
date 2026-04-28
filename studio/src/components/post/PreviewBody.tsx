@@ -9,9 +9,11 @@ import { PhoneMockup } from './PhoneMockup';
 import { SlideCanvas, type CanvasSlide } from './SlideCanvas';
 import {
   addHashtagAction,
+  generateCaptionHashtagsAction,
   removeHashtagAction,
   updateCaptionAction,
   updatePostStatusAction,
+  updateRewardLinkAction,
 } from '@/app/(chrome)/posts/[id]/preview/actions';
 import type { HashtagCategory, PostStatus } from '@/lib/supabase/types';
 
@@ -43,6 +45,8 @@ export function PreviewBody({
   initialStatus,
   initialScheduleAt,
   initialHashtags,
+  initialCtaKind,
+  initialRewardLink,
   slides,
 }: {
   postId: string;
@@ -50,6 +54,8 @@ export function PreviewBody({
   initialStatus: PostStatus;
   initialScheduleAt: string | null;
   initialHashtags: PreviewHashtags;
+  initialCtaKind: string | null;
+  initialRewardLink: string | null;
   slides: PreviewSlide[];
 }) {
   const [idx, setIdx] = useState(0);
@@ -63,7 +69,11 @@ export function PreviewBody({
   const [adding, setAdding] = useState<HashtagCategory | null>(null);
   const [draftTag, setDraftTag] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [rewardLink, setRewardLink] = useState(initialRewardLink ?? '');
   const [, startTransition] = useTransition();
+  const rewardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCommentLink = initialCtaKind === 'comment_link';
 
   const exportHostRef = useRef<HTMLDivElement | null>(null);
   const captionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,6 +124,43 @@ export function PreviewBody({
         if (res.error) toast.error(`캡션 저장 실패: ${res.error}`);
       });
     }, SAVE_DEBOUNCE_MS);
+  };
+
+  // ─── Reward link: debounced save (engagement-polish module 2d) ───
+  const onRewardLinkChange = (next: string) => {
+    setRewardLink(next);
+    if (rewardTimerRef.current) clearTimeout(rewardTimerRef.current);
+    rewardTimerRef.current = setTimeout(() => {
+      startTransition(async () => {
+        const res = await updateRewardLinkAction(postId, next);
+        if (res.error) toast.error(`링크 저장 실패: ${res.error}`);
+      });
+    }, SAVE_DEBOUNCE_MS);
+  };
+
+  // ─── AI caption + hashtag generation (engagement-polish module 3) ───
+  const handleAiGenerate = () => {
+    if (generatingAi) return;
+    if (caption.trim().length > 0) {
+      const ok = window.confirm(
+        '기존 캡션과 해시태그가 모두 교체됩니다. 진행할까요?',
+      );
+      if (!ok) return;
+    }
+    setGeneratingAi(true);
+    toast('✨ Gemini가 검색 + 캡션·해시태그 생성 중… (10~25초)');
+    startTransition(async () => {
+      const res = await generateCaptionHashtagsAction(postId);
+      setGeneratingAi(false);
+      if (res.error) {
+        toast.error(`AI 생성 실패: ${res.error}`);
+        return;
+      }
+      toast('✓ AI 캡션·해시태그 생성 완료. 새로고침해서 확인하세요');
+      // Force a reload to fetch fresh server data (revalidatePath alone may not
+      // re-render this client component without a state hook).
+      window.location.reload();
+    });
   };
 
   // ─── Hashtags ───
@@ -312,6 +359,38 @@ export function PreviewBody({
           </div>
         </div>
 
+        {/* 댓글 유도 CTA → reward_link 편집 카드 (engagement-polish module 2d) */}
+        {isCommentLink && (
+          <div
+            className="rounded-xl border p-6"
+            style={{
+              background: 'var(--bg-secondary)',
+              borderColor: 'var(--brand-accent)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[18px]">💬</span>
+              <div className="text-[18px] font-semibold">댓글 유도 — 발송할 자료/링크</div>
+            </div>
+            <p className="text-[12px] mb-3 m-0" style={{ color: 'var(--text-secondary)' }}>
+              댓글 단 사람에게 보낼 링크 또는 짧은 안내문. AI 캡션 생성 시 자동으로 안내됩니다.
+            </p>
+            <textarea
+              className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none transition-colors leading-relaxed"
+              style={{
+                background: 'var(--bg-tertiary)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)',
+                minHeight: 60,
+              }}
+              rows={2}
+              placeholder="https://notion.so/xxx 또는 카카오톡 채널 링크..."
+              value={rewardLink}
+              onChange={(e) => onRewardLinkChange(e.target.value)}
+            />
+          </div>
+        )}
+
         {/* 캡션 */}
         <div
           className="rounded-xl border p-6"
@@ -319,13 +398,28 @@ export function PreviewBody({
         >
           <div className="flex items-center justify-between mb-2">
             <div className="text-[18px] font-semibold">📝 캡션</div>
-            <button
-              className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
-              style={{ color: 'var(--text-secondary)', background: 'transparent' }}
-              onClick={() => setEditingCaption((e) => !e)}
-            >
-              {editingCaption ? '완료' : '✏️ 편집'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors disabled:opacity-50"
+                style={{
+                  background: 'var(--brand-accent-bg)',
+                  color: 'var(--brand-accent)',
+                  border: '1px solid var(--brand-accent)',
+                }}
+                onClick={handleAiGenerate}
+                disabled={generatingAi}
+                title="Gemini로 캡션 + 해시태그 자동 생성"
+              >
+                {generatingAi ? '🎨 생성 중…' : '✨ AI 자동 생성'}
+              </button>
+              <button
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
+                style={{ color: 'var(--text-secondary)', background: 'transparent' }}
+                onClick={() => setEditingCaption((e) => !e)}
+              >
+                {editingCaption ? '완료' : '✏️ 편집'}
+              </button>
+            </div>
           </div>
           {editingCaption ? (
             <textarea

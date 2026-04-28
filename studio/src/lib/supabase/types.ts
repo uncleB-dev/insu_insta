@@ -49,6 +49,7 @@ export interface PostRow {
   tone: string | null;
   cta_kind: string | null;
   caption: string | null;
+  reward_link: string | null;
   schedule_at: string | null;
   created_at: string;
   updated_at: string;
@@ -65,6 +66,7 @@ export interface PostInsert {
   tone?: string | null;
   cta_kind?: string | null;
   caption?: string | null;
+  reward_link?: string | null;
   schedule_at?: string | null;
   created_at?: string;
   updated_at?: string;

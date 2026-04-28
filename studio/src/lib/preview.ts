@@ -13,6 +13,8 @@ export type PreviewBundle = {
   status: PostStatus;
   caption: string;
   scheduleAt: string | null;
+  ctaKind: string | null;
+  rewardLink: string | null;
   slides: PreviewSlide[];
   hashtags: PreviewHashtags;
 };
@@ -30,7 +32,7 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
   const [{ data: post }, { data: slidesRows }, { data: tagsRows }] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, title, status, caption, schedule_at')
+      .select('id, title, status, caption, schedule_at, cta_kind, reward_link')
       .eq('id', postId)
       .maybeSingle(),
     supabase
@@ -99,6 +101,8 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     status: post.status as PostStatus,
     caption: post.caption ?? '',
     scheduleAt: post.schedule_at,
+    ctaKind: post.cta_kind ?? null,
+    rewardLink: post.reward_link ?? null,
     slides,
     hashtags,
   };

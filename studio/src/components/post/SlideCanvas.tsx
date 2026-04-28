@@ -119,6 +119,8 @@ export function SlideCanvas({
         backgroundImage: `url(${bg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        // engagement-polish module 1: friendly Korean font for slide canvas only
+        fontFamily: "'GmarketSans', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
       }}
     >
       <div

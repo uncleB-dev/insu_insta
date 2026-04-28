@@ -59,6 +59,7 @@ function NewPostInner() {
   const [tone, setTone] = useState<'soft' | 'normal' | 'strong'>('normal');
   const [slideCount, setSlideCount] = useState(9);
   const [cta, setCta] = useState('save');
+  const [rewardLink, setRewardLink] = useState('');
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [keywords, setKeywords] = useState('');
   const [emphasizeNoSell, setEmphasizeNoSell] = useState(true);
@@ -72,7 +73,10 @@ function NewPostInner() {
     if (t) setTopic(t);
   }, [searchParams]);
 
-  const canGenerate = topic.trim() && facts.trim();
+  const canGenerate =
+    topic.trim() &&
+    facts.trim() &&
+    (cta !== 'comment_link' || rewardLink.trim());
 
   const handleGenerate = () => {
     if (!canGenerate || loading) return;
@@ -86,6 +90,7 @@ function NewPostInner() {
         tone,
         slideCount,
         cta,
+        rewardLink: cta === 'comment_link' ? rewardLink.trim() : null,
       });
       if (res.error || !res.postId) {
         setLoading(false);
@@ -204,9 +209,30 @@ function NewPostInner() {
                 <option value="share">공유 유도</option>
                 <option value="dm">DM 문의</option>
                 <option value="link">링크 클릭</option>
+                <option value="comment_link">💬 댓글 유도 + 링크 발송</option>
               </select>
             </div>
           </div>
+
+          {/* 댓글 유도 CTA 활성 시 reward_link 입력 (engagement-polish module 2) */}
+          {cta === 'comment_link' && (
+            <div>
+              <FieldLabel required>댓글 작성자에게 보낼 링크/안내</FieldLabel>
+              <textarea
+                className={inputCls}
+                style={{ ...inputStyle, minHeight: 80 }}
+                rows={3}
+                placeholder="예: https://notion.so/xxx 또는 카카오톡 채널 링크 등 (댓글 단 사람에게 DM/댓글로 보낼 자료)"
+                value={rewardLink}
+                onChange={e => setRewardLink(e.target.value)}
+                onFocus={e => (e.target.style.borderColor = 'var(--brand-accent)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+              />
+              <p className="text-[12px] mt-1.5 m-0" style={{ color: 'var(--text-muted)' }}>
+                AI가 9번 슬라이드와 캡션에서 이 링크를 자연스럽게 안내해줍니다
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 옵션 아코디언 */}

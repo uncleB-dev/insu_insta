@@ -84,6 +84,8 @@ export default async function PostDetailPage({
         initialStatus={bundle.status}
         initialScheduleAt={bundle.scheduleAt}
         initialHashtags={bundle.hashtags}
+        initialCtaKind={bundle.ctaKind}
+        initialRewardLink={bundle.rewardLink}
         slides={bundle.slides}
       />
     </div>

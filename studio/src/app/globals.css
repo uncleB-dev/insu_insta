@@ -1,5 +1,8 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+/* Gmarket Sans — slide canvas only (engagement-polish module 1)
+   webfontworld mirror via jsdelivr (free commercial use, G마켓 official) */
+@import url('https://cdn.jsdelivr.net/gh/webfontworld/gmarket/GmarketSans.css');
 
 @import "tailwindcss";
 @import "tw-animate-css";
