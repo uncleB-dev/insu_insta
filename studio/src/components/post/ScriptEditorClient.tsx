@@ -56,6 +56,187 @@ function RadioPill<T extends string>({
   );
 }
 
+// ─── slide-header-multi-msg: dialogue-only multi-bubble editor ──────
+function isDialogueLayout(layout: string | null | undefined): boolean {
+  if (!layout) return false;
+  // Support legacy A/B values pre-migration
+  return ['msg_left', 'msg_right', 'A', 'B'].includes(layout);
+}
+
+const SPEAKER_PILL: Array<[Speaker, string]> = [
+  ['niece', '조카(좌)'],
+  ['uncle', '삼촌(우)'],
+  ['none', '없음(좌)'],
+];
+
+function SpeakerToggle({
+  value,
+  onChange,
+  size = 'sm',
+}: {
+  value: Speaker;
+  onChange: (s: Speaker) => void;
+  size?: 'sm' | 'md';
+}) {
+  return (
+    <div className="flex gap-1">
+      {SPEAKER_PILL.map(([k, label]) => (
+        <button
+          key={k}
+          type="button"
+          className={`${size === 'sm' ? 'text-[10px] px-1.5 py-0.5' : 'text-[12px] px-2 py-1'} rounded transition-colors`}
+          style={{
+            background: value === k ? 'var(--brand-accent-bg)' : 'var(--bg-tertiary)',
+            border: `1px solid ${value === k ? 'var(--brand-accent)' : 'var(--border)'}`,
+            color: value === k ? 'var(--brand-accent)' : 'var(--text-secondary)',
+            fontWeight: value === k ? 600 : 400,
+          }}
+          onClick={() => onChange(k)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MultiMessageEditor({
+  slide,
+  editSelected,
+}: {
+  slide: EditorSlide;
+  editSelected: (
+    serverPatch: SlidePatch,
+    localPatch: Partial<EditorSlide>,
+    recomputeGuards?: boolean,
+  ) => void;
+}) {
+  if (!isDialogueLayout(slide.layout)) {
+    return null; // 비대화형 레이아웃에서는 표시 안 함
+  }
+
+  const bubbles: Array<{
+    idx: 2 | 3 | 4;
+    text: string | null | undefined;
+    speaker: Speaker | null | undefined;
+  }> = [
+    { idx: 2, text: slide.main2, speaker: slide.speaker2 },
+    { idx: 3, text: slide.main3, speaker: slide.speaker3 },
+    { idx: 4, text: slide.main4, speaker: slide.speaker4 },
+  ];
+
+  // Find first empty slot
+  const firstEmpty = bubbles.find((b) => !b.text || b.text.trim() === '');
+  const nextSlot = firstEmpty?.idx;
+  // Show inputs for all slots that have text + the next empty slot's "add" button
+  const visibleSlots = bubbles.filter((b) => b.text !== null && b.text !== undefined && b.text !== '');
+
+  const setBubble = (idx: 2 | 3 | 4, text: string, speaker: Speaker) => {
+    const textKey = `main_text${idx}` as 'main_text2' | 'main_text3' | 'main_text4';
+    const speakerKey = `speaker${idx}` as 'speaker2' | 'speaker3' | 'speaker4';
+    const localTextKey = `main${idx}` as 'main2' | 'main3' | 'main4';
+    const localSpeakerKey = `speaker${idx}` as 'speaker2' | 'speaker3' | 'speaker4';
+    editSelected(
+      { [textKey]: text || null, [speakerKey]: text ? speaker : null } as SlidePatch,
+      { [localTextKey]: text || null, [localSpeakerKey]: text ? speaker : null } as Partial<EditorSlide>,
+    );
+  };
+
+  const removeBubble = (idx: 2 | 3 | 4) => {
+    const textKey = `main_text${idx}` as 'main_text2' | 'main_text3' | 'main_text4';
+    const speakerKey = `speaker${idx}` as 'speaker2' | 'speaker3' | 'speaker4';
+    const localTextKey = `main${idx}` as 'main2' | 'main3' | 'main4';
+    const localSpeakerKey = `speaker${idx}` as 'speaker2' | 'speaker3' | 'speaker4';
+    editSelected(
+      { [textKey]: null, [speakerKey]: null } as SlidePatch,
+      { [localTextKey]: null, [localSpeakerKey]: null } as Partial<EditorSlide>,
+    );
+  };
+
+  const defaultSpeaker: Speaker = slide.layout === 'msg_right' || slide.layout === 'B' ? 'uncle' : 'niece';
+
+  return (
+    <div
+      className="flex flex-col gap-2.5 rounded-lg p-3"
+      style={{
+        background: 'var(--bg-tertiary)',
+        border: '1px dashed var(--border)',
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <div
+          className="text-[12px] font-semibold"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          💬 추가 말풍선 (대화형 전용)
+        </div>
+        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          {visibleSlots.length} / 3개
+        </span>
+      </div>
+
+      {visibleSlots.map((b) => (
+        <div key={b.idx} className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              말풍선 {b.idx}
+            </span>
+            <div className="flex items-center gap-2">
+              <SpeakerToggle
+                value={(b.speaker as Speaker) ?? defaultSpeaker}
+                onChange={(s) => setBubble(b.idx, b.text ?? '', s)}
+              />
+              <button
+                type="button"
+                className="text-[11px] transition-colors"
+                style={{
+                  color: 'var(--text-muted)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                }}
+                onClick={() => removeBubble(b.idx)}
+                title="말풍선 삭제"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          <textarea
+            className="w-full px-2.5 py-2 rounded text-[13px] outline-none resize-none"
+            style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)',
+              minHeight: 50,
+            }}
+            value={b.text ?? ''}
+            onChange={(e) =>
+              setBubble(b.idx, e.target.value, (b.speaker as Speaker) ?? defaultSpeaker)
+            }
+          />
+        </div>
+      ))}
+
+      {nextSlot && (
+        <button
+          type="button"
+          className="px-3 py-1.5 rounded-md text-[12px] transition-colors w-fit"
+          style={{
+            border: '1px dashed var(--border-strong)',
+            color: 'var(--text-secondary)',
+            background: 'transparent',
+          }}
+          onClick={() => setBubble(nextSlot, ' ', defaultSpeaker)}
+        >
+          ＋ 말풍선 {nextSlot} 추가
+        </button>
+      )}
+    </div>
+  );
+}
+
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -449,6 +630,12 @@ export function ScriptEditorClient({
                   </div>
                 )}
               </div>
+
+              {/* slide-header-multi-msg: 추가 말풍선 (대화형 레이아웃에서만) */}
+              <MultiMessageEditor
+                slide={selected}
+                editSelected={editSelected}
+              />
 
               <div>
                 <FieldLabel>보조 텍스트</FieldLabel>

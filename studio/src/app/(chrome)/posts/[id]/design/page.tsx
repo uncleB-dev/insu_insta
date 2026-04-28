@@ -25,6 +25,12 @@ type SlideRow = {
   main_font_size: number | null;
   sub_font_size: number | null;
   line_height: number | null;
+  main_text2: string | null;
+  main_text3: string | null;
+  main_text4: string | null;
+  speaker2: Speaker | null;
+  speaker3: Speaker | null;
+  speaker4: Speaker | null;
   bg_photo: { id: string; src: string } | null;
 };
 
@@ -50,11 +56,15 @@ export default async function DesignPage({
 
   const [{ data: post }, { data: slidesRows }, { data: photosRows }, { data: templatesRows }] =
     await Promise.all([
-      supabase.from('posts').select('id, title').eq('id', id).maybeSingle(),
+      supabase
+        .from('posts')
+        .select('id, title, header_text, header_image_url')
+        .eq('id', id)
+        .maybeSingle(),
       supabase
         .from('slides')
         .select(
-          `id, ord, principle, speaker, main_text, sub_text, emphasis, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
+          `id, ord, principle, speaker, main_text, sub_text, emphasis, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
         )
         .eq('post_id', id)
         .order('ord', { ascending: true }),
@@ -72,6 +82,10 @@ export default async function DesignPage({
     ]);
 
   if (!post) notFound();
+
+  const headerText = (post as { header_text?: string | null }).header_text ?? null;
+  const headerImageUrl =
+    (post as { header_image_url?: string | null }).header_image_url ?? null;
 
   const slides: DesignSlide[] = ((slidesRows ?? []) as unknown as SlideRow[]).map(
     (row) => ({
@@ -92,6 +106,14 @@ export default async function DesignPage({
       main_font_size: row.main_font_size,
       sub_font_size: row.sub_font_size,
       line_height: row.line_height,
+      main2: row.main_text2,
+      main3: row.main_text3,
+      main4: row.main_text4,
+      speaker2: row.speaker2,
+      speaker3: row.speaker3,
+      speaker4: row.speaker4,
+      header_text: headerText,
+      header_image_url: headerImageUrl,
     }),
   );
 

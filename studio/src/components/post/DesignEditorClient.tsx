@@ -38,6 +38,15 @@ export type DesignSlide = {
   main_font_size: number | null;
   sub_font_size: number | null;
   line_height: number | null;
+  // slide-header-multi-msg
+  main2: string | null;
+  main3: string | null;
+  main4: string | null;
+  speaker2: Speaker | null;
+  speaker3: Speaker | null;
+  speaker4: Speaker | null;
+  header_text: string | null;
+  header_image_url: string | null;
 };
 
 export type LibraryPhoto = {

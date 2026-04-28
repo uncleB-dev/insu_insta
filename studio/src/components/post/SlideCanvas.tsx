@@ -4,7 +4,7 @@
 //
 // Design Ref: docs/01-plan/features/slide-templates.plan.md §7.2 — 9 distinct templates
 
-import type { Principle } from '@/lib/supabase/types';
+import type { Principle, Speaker } from '@/lib/supabase/types';
 
 export type CanvasSlide = {
   principle: Principle;
@@ -22,6 +22,17 @@ export type CanvasSlide = {
   main_font_size?: number | null;
   sub_font_size?: number | null;
   line_height?: number | null;
+  // slide-header-multi-msg: additional bubbles for dialogue layouts
+  main2?: string | null;
+  main3?: string | null;
+  main4?: string | null;
+  speaker?: Speaker;
+  speaker2?: Speaker | null;
+  speaker3?: Speaker | null;
+  speaker4?: Speaker | null;
+  // Per-post header (passed from parent)
+  header_text?: string | null;
+  header_image_url?: string | null;
 };
 
 const ACCENT_MAP: Record<string, string> = {
@@ -160,25 +171,56 @@ export function SlideCanvas({
     switch (layout) {
       case 'msg_left':
       case 'msg_right': {
-        const isLeft = layout === 'msg_left';
+        // slide-header-multi-msg: collect up to 4 bubbles
+        type Bubble = { text: string; speaker: Speaker };
+        const defaultSide: Speaker = layout === 'msg_left' ? 'niece' : 'uncle';
+        const allBubbles: Bubble[] = [
+          { text: mainText, speaker: slide.speaker ?? defaultSide },
+          ...([
+            { t: slide.main2, s: slide.speaker2 },
+            { t: slide.main3, s: slide.speaker3 },
+            { t: slide.main4, s: slide.speaker4 },
+          ]
+            .filter((b) => b.t && b.t.trim().length > 0)
+            .map((b) => ({
+              text: stripMarkdown(b.t!),
+              speaker: (b.s ?? defaultSide) as Speaker,
+            }))),
+        ];
+
         return (
           <div
             style={{
-              alignSelf: isLeft ? 'flex-start' : 'flex-end',
-              maxWidth: '80%',
-              background: isLeft ? '#fff' : '#FEE500',
-              color: '#000',
-              padding: `${px(14)}px ${px(18)}px`,
-              borderRadius: isLeft
-                ? `${px(4)}px ${px(16)}px ${px(16)}px ${px(16)}px`
-                : `${px(16)}px ${px(4)}px ${px(16)}px ${px(16)}px`,
-              fontSize: px(mainSize),
-              fontWeight: 600,
-              lineHeight: lh,
-              wordBreak: 'keep-all',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: px(8),
+              width: '100%',
             }}
           >
-            {mainText}
+            {allBubbles.map((b, i) => {
+              const onRight = b.speaker === 'uncle';
+              return (
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: onRight ? 'flex-end' : 'flex-start',
+                    maxWidth: '80%',
+                    background: onRight ? '#FEE500' : '#fff',
+                    color: '#000',
+                    padding: `${px(12)}px ${px(16)}px`,
+                    borderRadius: onRight
+                      ? `${px(16)}px ${px(4)}px ${px(16)}px ${px(16)}px`
+                      : `${px(4)}px ${px(16)}px ${px(16)}px ${px(16)}px`,
+                    fontSize: px(mainSize),
+                    fontWeight: 600,
+                    lineHeight: lh,
+                    wordBreak: 'keep-all',
+                  }}
+                >
+                  {b.text}
+                </div>
+              );
+            })}
           </div>
         );
       }
@@ -545,6 +587,54 @@ export function SlideCanvas({
           </div>
         )}
       </div>
+
+      {/* slide-header-multi-msg: 좌상단 브랜드 머릿말 */}
+      {(slide.header_image_url || slide.header_text) && (
+        <div
+          className="absolute"
+          style={{
+            top: px(14),
+            left: px(14),
+            zIndex: 5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: px(6),
+            background: 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            padding: `${px(5)}px ${px(10)}px`,
+            borderRadius: px(8),
+            maxWidth: '70%',
+          }}
+        >
+          {slide.header_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slide.header_image_url}
+              alt=""
+              style={{ height: px(22), width: 'auto', display: 'block' }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <span
+              style={{
+                color: 'rgba(255,255,255,0.92)',
+                fontSize: px(11),
+                fontWeight: 600,
+                fontFamily: "'Pretendard', system-ui, sans-serif",
+                letterSpacing: 0.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {slide.header_text}
+            </span>
+          )}
+        </div>
+      )}
 
       {showIndex && totalSlides && (
         <div

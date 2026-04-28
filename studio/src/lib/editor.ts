@@ -14,6 +14,14 @@ export type EditorSlide = {
   sub: string;
   emphasis: string[];
   guards: GuardHit[];
+  // slide-header-multi-msg: additional bubbles (only used in dialogue layouts)
+  main2?: string | null;
+  main3?: string | null;
+  main4?: string | null;
+  speaker2?: Speaker | null;
+  speaker3?: Speaker | null;
+  speaker4?: Speaker | null;
+  layout?: string | null;
 };
 
 export type EditorPost = {

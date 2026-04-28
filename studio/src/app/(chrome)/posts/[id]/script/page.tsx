@@ -14,6 +14,13 @@ type SlideRow = {
   main_text: string;
   sub_text: string | null;
   emphasis: string[];
+  layout: string | null;
+  main_text2: string | null;
+  main_text3: string | null;
+  main_text4: string | null;
+  speaker2: Speaker | null;
+  speaker3: Speaker | null;
+  speaker4: Speaker | null;
 };
 
 export default async function ScriptPage({
@@ -28,7 +35,9 @@ export default async function ScriptPage({
     supabase.from('posts').select('id, title').eq('id', id).maybeSingle(),
     supabase
       .from('slides')
-      .select('id, ord, principle, speaker, scene, main_text, sub_text, emphasis')
+      .select(
+        'id, ord, principle, speaker, scene, main_text, sub_text, emphasis, layout, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4',
+      )
       .eq('post_id', id)
       .order('ord', { ascending: true }),
     supabase
@@ -50,6 +59,13 @@ export default async function ScriptPage({
     sub: row.sub_text ?? '',
     emphasis: row.emphasis ?? [],
     guards: evaluateGuards(row.main_text, rules),
+    layout: row.layout,
+    main2: row.main_text2,
+    main3: row.main_text3,
+    main4: row.main_text4,
+    speaker2: row.speaker2,
+    speaker3: row.speaker3,
+    speaker4: row.speaker4,
   }));
 
   return <ScriptEditorClient postId={id} initialSlides={slides} rules={rules} />;

@@ -50,6 +50,8 @@ export interface PostRow {
   cta_kind: string | null;
   caption: string | null;
   reward_link: string | null;
+  header_text: string | null;
+  header_image_url: string | null;
   schedule_at: string | null;
   created_at: string;
   updated_at: string;
@@ -67,6 +69,8 @@ export interface PostInsert {
   cta_kind?: string | null;
   caption?: string | null;
   reward_link?: string | null;
+  header_text?: string | null;
+  header_image_url?: string | null;
   schedule_at?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -92,6 +96,12 @@ export interface SlideRow {
   main_font_size: number | null;
   sub_font_size: number | null;
   line_height: number | null;
+  main_text2: string | null;
+  main_text3: string | null;
+  main_text4: string | null;
+  speaker2: Speaker | null;
+  speaker3: Speaker | null;
+  speaker4: Speaker | null;
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +124,12 @@ export interface SlideInsert {
   main_font_size?: number | null;
   sub_font_size?: number | null;
   line_height?: number | null;
+  main_text2?: string | null;
+  main_text3?: string | null;
+  main_text4?: string | null;
+  speaker2?: Speaker | null;
+  speaker3?: Speaker | null;
+  speaker4?: Speaker | null;
   created_at?: string;
   updated_at?: string;
 }

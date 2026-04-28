@@ -12,6 +12,7 @@ import {
   generateCaptionHashtagsAction,
   removeHashtagAction,
   updateCaptionAction,
+  updatePostHeaderAction,
   updatePostStatusAction,
   updateRewardLinkAction,
 } from '@/app/(chrome)/posts/[id]/preview/actions';
@@ -47,6 +48,8 @@ export function PreviewBody({
   initialHashtags,
   initialCtaKind,
   initialRewardLink,
+  initialHeaderText,
+  initialHeaderImageUrl,
   slides,
 }: {
   postId: string;
@@ -56,6 +59,8 @@ export function PreviewBody({
   initialHashtags: PreviewHashtags;
   initialCtaKind: string | null;
   initialRewardLink: string | null;
+  initialHeaderText: string | null;
+  initialHeaderImageUrl: string | null;
   slides: PreviewSlide[];
 }) {
   const [idx, setIdx] = useState(0);
@@ -71,8 +76,11 @@ export function PreviewBody({
   const [downloading, setDownloading] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
   const [rewardLink, setRewardLink] = useState(initialRewardLink ?? '');
+  const [headerText, setHeaderText] = useState(initialHeaderText ?? '');
+  const [headerImageUrl, setHeaderImageUrl] = useState(initialHeaderImageUrl ?? '');
   const [, startTransition] = useTransition();
   const rewardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const headerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCommentLink = initialCtaKind === 'comment_link';
 
   const exportHostRef = useRef<HTMLDivElement | null>(null);
@@ -103,7 +111,13 @@ export function PreviewBody({
     );
   }
 
-  const sel = slides[idx];
+  // Inject current header into each slide so SlideCanvas + ZIP capture render it
+  const slidesWithHeader = slides.map((s) => ({
+    ...s,
+    header_text: headerText || null,
+    header_image_url: headerImageUrl || null,
+  }));
+  const sel = slidesWithHeader[idx];
 
   const totalTags = Object.values(tags).reduce((a, t) => a + t.length, 0);
   const hashtagPreview = (() => {
@@ -136,6 +150,25 @@ export function PreviewBody({
         if (res.error) toast.error(`링크 저장 실패: ${res.error}`);
       });
     }, SAVE_DEBOUNCE_MS);
+  };
+
+  // ─── Header (slide-header-multi-msg): debounced save ───
+  const queueHeaderSave = (nextText: string, nextImage: string) => {
+    if (headerTimerRef.current) clearTimeout(headerTimerRef.current);
+    headerTimerRef.current = setTimeout(() => {
+      startTransition(async () => {
+        const res = await updatePostHeaderAction(postId, nextText, nextImage);
+        if (res.error) toast.error(`머릿말 저장 실패: ${res.error}`);
+      });
+    }, SAVE_DEBOUNCE_MS);
+  };
+  const onHeaderTextChange = (v: string) => {
+    setHeaderText(v);
+    queueHeaderSave(v, headerImageUrl);
+  };
+  const onHeaderImageChange = (v: string) => {
+    setHeaderImageUrl(v);
+    queueHeaderSave(headerText, v);
   };
 
   // ─── AI caption + hashtag generation (engagement-polish module 3) ───
@@ -357,6 +390,62 @@ export function PreviewBody({
               hashtagPreview={hashtagPreview}
             />
           </div>
+        </div>
+
+        {/* 머릿말 편집 (slide-header-multi-msg) */}
+        <div
+          className="rounded-xl border p-6"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[18px]">🏷️</span>
+            <div className="text-[18px] font-semibold">머릿말 (좌상단 브랜드)</div>
+          </div>
+          <p className="text-[12px] mb-4 m-0" style={{ color: 'var(--text-secondary)' }}>
+            모든 9컷 슬라이드의 좌상단에 작게 표시됩니다. 이미지가 있으면 텍스트보다 우선 표시.
+          </p>
+          <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div>
+              <div className="text-[12px] font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                텍스트
+              </div>
+              <input
+                className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none transition-colors"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-primary)',
+                }}
+                placeholder="예: 보험삼촌의 보험 이야기"
+                value={headerText}
+                onChange={(e) => onHeaderTextChange(e.target.value)}
+              />
+            </div>
+            <div>
+              <div className="text-[12px] font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                이미지 URL (선택)
+              </div>
+              <input
+                className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none transition-colors font-mono"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                placeholder="https://... .png"
+                value={headerImageUrl}
+                onChange={(e) => onHeaderImageChange(e.target.value)}
+              />
+            </div>
+          </div>
+          {(headerText || headerImageUrl) && (
+            <p className="text-[11px] mt-2 m-0" style={{ color: 'var(--text-muted)' }}>
+              {headerImageUrl
+                ? '✓ 이미지 사용 (텍스트는 무시됨)'
+                : '✓ 텍스트 사용'}
+            </p>
+          )}
         </div>
 
         {/* 댓글 유도 CTA → reward_link 비공개 메모 (engagement-polish module 2d) */}
@@ -603,12 +692,12 @@ export function PreviewBody({
           left: -99999,
           top: 0,
           width: 1080,
-          height: 1080 * slides.length,
+          height: 1080 * slidesWithHeader.length,
           pointerEvents: 'none',
           opacity: 0,
         }}
       >
-        {slides.map((s) => (
+        {slidesWithHeader.map((s) => (
           <div key={s.id} data-slide-export style={{ width: 1080, height: 1080 }}>
             <SlideCanvas slide={s} size={1080} />
           </div>

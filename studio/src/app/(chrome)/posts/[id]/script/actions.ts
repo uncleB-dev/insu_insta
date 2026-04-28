@@ -13,6 +13,13 @@ export type SlidePatch = {
   main_text?: string;
   sub_text?: string | null;
   emphasis?: string[];
+  // slide-header-multi-msg: additional bubbles
+  main_text2?: string | null;
+  main_text3?: string | null;
+  main_text4?: string | null;
+  speaker2?: Speaker | null;
+  speaker3?: Speaker | null;
+  speaker4?: Speaker | null;
 };
 
 async function loadActiveRules(): Promise<GuardrailRule[]> {
@@ -24,19 +31,25 @@ async function loadActiveRules(): Promise<GuardrailRule[]> {
   return (data ?? []) as GuardrailRule[];
 }
 
-function rowToSlide(
-  row: {
-    id: string;
-    ord: number;
-    principle: Principle;
-    speaker: Speaker;
-    scene: string | null;
-    main_text: string;
-    sub_text: string | null;
-    emphasis: string[];
-  },
-  rules: GuardrailRule[],
-): EditorSlide {
+type SlideRowFull = {
+  id: string;
+  ord: number;
+  principle: Principle;
+  speaker: Speaker;
+  scene: string | null;
+  main_text: string;
+  sub_text: string | null;
+  emphasis: string[];
+  layout?: string | null;
+  main_text2?: string | null;
+  main_text3?: string | null;
+  main_text4?: string | null;
+  speaker2?: Speaker | null;
+  speaker3?: Speaker | null;
+  speaker4?: Speaker | null;
+};
+
+function rowToSlide(row: SlideRowFull, rules: GuardrailRule[]): EditorSlide {
   return {
     id: row.id,
     ord: row.ord,
@@ -47,6 +60,13 @@ function rowToSlide(
     sub: row.sub_text ?? '',
     emphasis: row.emphasis ?? [],
     guards: evaluateGuards(row.main_text, rules),
+    layout: row.layout ?? null,
+    main2: row.main_text2 ?? null,
+    main3: row.main_text3 ?? null,
+    main4: row.main_text4 ?? null,
+    speaker2: row.speaker2 ?? null,
+    speaker3: row.speaker3 ?? null,
+    speaker4: row.speaker4 ?? null,
   };
 }
 
@@ -60,7 +80,9 @@ export async function updateSlideAction(
     .from('slides')
     .update(patch)
     .eq('id', slideId)
-    .select('id, ord, principle, speaker, scene, main_text, sub_text, emphasis, post_id')
+    .select(
+      'id, ord, principle, speaker, scene, main_text, sub_text, emphasis, layout, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4, post_id',
+    )
     .single();
 
   if (error || !row) return { error: error?.message ?? 'slide not found' };
@@ -96,7 +118,9 @@ export async function addSlideAction(
       sub_text: '',
       emphasis: [],
     })
-    .select('id, ord, principle, speaker, scene, main_text, sub_text, emphasis')
+    .select(
+      'id, ord, principle, speaker, scene, main_text, sub_text, emphasis, layout, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4',
+    )
     .single();
 
   if (error || !row) return { error: error?.message ?? 'failed to add' };

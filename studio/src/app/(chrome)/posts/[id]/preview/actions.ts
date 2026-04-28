@@ -35,6 +35,26 @@ export async function updateRewardLinkAction(
   return {};
 }
 
+export async function updatePostHeaderAction(
+  postId: string,
+  headerText: string,
+  headerImageUrl: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      header_text: headerText || null,
+      header_image_url: headerImageUrl || null,
+    })
+    .eq('id', postId);
+  if (error) return { error: error.message };
+  revalidatePath(`/posts/${postId}/preview`);
+  revalidatePath(`/posts/${postId}`);
+  revalidatePath(`/posts/${postId}/design`);
+  return {};
+}
+
 // engagement-polish module 3: AI caption + hashtag generator with grounded search
 export async function generateCaptionHashtagsAction(
   postId: string,
