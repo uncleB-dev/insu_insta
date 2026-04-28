@@ -32,6 +32,17 @@ const ACCENT_MAP: Record<string, string> = {
   white: '#FFFFFF',
 };
 
+// Gemini sometimes returns **bold** markdown markers in text.
+// We use the `emphasis` array for true bolding, so strip the markers from display.
+function stripMarkdown(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1') // **bold**
+    .replace(/\*(.+?)\*/g, '$1')       // *italic*
+    .replace(/__(.+?)__/g, '$1')       // __bold__
+    .replace(/_(.+?)_/g, '$1');         // _italic_
+}
+
 // ─── Layout-based defaults ──────────────────────────────────
 // Plan SC-8: backward compat — null fields render identically to pre-migration.
 export function defaultMainFontSize(layout: string): number {
@@ -95,6 +106,10 @@ export function SlideCanvas({
   const subSize = effectiveSubFontSize(slide.layout, slide.sub_font_size);
   const lh = effectiveLineHeight(slide.layout, slide.line_height);
 
+  // Strip stray markdown markers from AI-generated text
+  const mainText = stripMarkdown(slide.main);
+  const subText = stripMarkdown(slide.sub);
+
   return (
     <div
       className="relative overflow-hidden"
@@ -136,7 +151,7 @@ export function SlideCanvas({
               wordBreak: 'keep-all',
             }}
           >
-            {slide.main}
+            {mainText}
           </div>
         ) : slide.layout === 'C' ? (
           <div
@@ -155,7 +170,7 @@ export function SlideCanvas({
             <div
               style={{ fontSize: px(mainSize), fontWeight: 700, lineHeight: lh, wordBreak: 'keep-all' }}
             >
-              {slide.main}
+              {mainText}
             </div>
           </div>
         ) : (
@@ -169,10 +184,10 @@ export function SlideCanvas({
               wordBreak: 'keep-all',
             }}
           >
-            {slide.main}
+            {mainText}
           </div>
         )}
-        {slide.sub && (
+        {subText && (
           <div
             style={{
               marginTop: px(14),
@@ -184,7 +199,7 @@ export function SlideCanvas({
               wordBreak: 'keep-all',
             }}
           >
-            {slide.sub}
+            {subText}
           </div>
         )}
       </div>

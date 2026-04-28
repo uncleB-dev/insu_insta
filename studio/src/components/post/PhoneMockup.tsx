@@ -1,10 +1,12 @@
-import type { Principle } from '@/lib/supabase/types';
+// Phone mockup uses SlideCanvas for the inner image area so that
+// design choices (layout/blur/overlay/text_pos/accent/font_size/line_height)
+// stay in sync with the main carousel preview and ZIP export.
 
-export type PhoneMockupSlide = {
-  principle: Principle;
-  main: string;
-  bg_src: string;
-};
+import { SlideCanvas, type CanvasSlide } from './SlideCanvas';
+
+export type PhoneMockupSlide = CanvasSlide;
+
+const PHONE_IMAGE_SIZE = 272; // 304 - 8*2 (border) - 6*2 (padding)
 
 export function PhoneMockup({
   slide,
@@ -19,7 +21,6 @@ export function PhoneMockup({
   caption: string;
   hashtagPreview?: string;
 }) {
-  const bg = slide.bg_src || `https://picsum.photos/seed/insu${slideIdx + 10}/600/600`;
   return (
     <div
       className="relative"
@@ -63,29 +64,9 @@ export function PhoneMockup({
           <span className="text-white">⋯</span>
         </div>
 
-        <div
-          className="relative"
-          style={{
-            aspectRatio: '1/1',
-            backgroundImage: `url(${bg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div
-              className="text-[14px] font-semibold leading-snug max-w-[90%]"
-              style={{
-                background: '#fff',
-                color: '#000',
-                padding: '10px 14px',
-                borderRadius: '4px 12px 12px 12px',
-              }}
-            >
-              {slide.main}
-            </div>
-          </div>
+        {/* Slide canvas — same renderer as carousel + ZIP */}
+        <div className="relative" style={{ width: PHONE_IMAGE_SIZE, height: PHONE_IMAGE_SIZE }}>
+          <SlideCanvas slide={slide} size={PHONE_IMAGE_SIZE} />
           <div
             className="absolute bottom-2 right-2 text-[9px] text-white font-semibold px-1.5 py-0.5 rounded"
             style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -103,9 +84,12 @@ export function PhoneMockup({
         </div>
 
         <div className="px-3 pb-3 text-white text-[11px] leading-snug">
-          <b>uncleb_studio</b> {caption.slice(0, 80)}{caption.length > 80 ? '…' : ''}
+          <b>uncleb_studio</b> {caption.slice(0, 80)}
+          {caption.length > 80 ? '…' : ''}
           {hashtagPreview && (
-            <div className="mt-1" style={{ color: '#7aaa7a' }}>{hashtagPreview}</div>
+            <div className="mt-1" style={{ color: '#7aaa7a' }}>
+              {hashtagPreview}
+            </div>
           )}
         </div>
       </div>
