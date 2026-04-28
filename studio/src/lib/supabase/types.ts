@@ -85,6 +85,11 @@ export interface SlideRow {
   bg_photo_id: string | null;
   blur: number;
   overlay: number;
+  text_pos: string | null;
+  accent_color: string | null;
+  main_font_size: number | null;
+  sub_font_size: number | null;
+  line_height: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -102,6 +107,11 @@ export interface SlideInsert {
   bg_photo_id?: string | null;
   blur?: number;
   overlay?: number;
+  text_pos?: string | null;
+  accent_color?: string | null;
+  main_font_size?: number | null;
+  sub_font_size?: number | null;
+  line_height?: number | null;
   created_at?: string;
   updated_at?: string;
 }

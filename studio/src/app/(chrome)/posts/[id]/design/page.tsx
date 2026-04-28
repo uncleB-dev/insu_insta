@@ -20,6 +20,9 @@ type SlideRow = {
   text_pos: string | null;
   accent_color: string | null;
   bg_photo_id: string | null;
+  main_font_size: number | null;
+  sub_font_size: number | null;
+  line_height: number | null;
   bg_photo: { id: string; src: string } | null;
 };
 
@@ -42,7 +45,7 @@ export default async function DesignPage({
       supabase
         .from('slides')
         .select(
-          `id, ord, principle, speaker, main_text, sub_text, layout, blur, overlay, text_pos, accent_color, bg_photo_id, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
+          `id, ord, principle, speaker, main_text, sub_text, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
         )
         .eq('post_id', id)
         .order('ord', { ascending: true }),
@@ -70,6 +73,9 @@ export default async function DesignPage({
       accent_color: row.accent_color ?? 'green',
       bg_photo_id: row.bg_photo_id,
       bg_src: row.bg_photo?.src ?? '',
+      main_font_size: row.main_font_size,
+      sub_font_size: row.sub_font_size,
+      line_height: row.line_height,
     }),
   );
 

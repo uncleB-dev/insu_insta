@@ -38,6 +38,7 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
       .select(
         `id, ord, principle, speaker, main_text, sub_text,
          layout, blur, overlay, text_pos, accent_color, bg_photo_id,
+         main_font_size, sub_font_size, line_height,
          bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
       )
       .eq('post_id', postId)
@@ -62,6 +63,9 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     overlay: number | null;
     text_pos: string | null;
     accent_color: string | null;
+    main_font_size: number | null;
+    sub_font_size: number | null;
+    line_height: number | null;
     bg_photo: { id: string; src: string } | null;
   };
 
@@ -78,6 +82,9 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     text_pos: r.text_pos ?? 'mid',
     accent_color: r.accent_color ?? 'green',
     bg_src: r.bg_photo?.src ?? '',
+    main_font_size: r.main_font_size,
+    sub_font_size: r.sub_font_size,
+    line_height: r.line_height,
   }));
 
   const hashtags: PreviewHashtags = { ...EMPTY_TAGS };

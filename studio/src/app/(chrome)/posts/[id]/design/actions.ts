@@ -11,6 +11,9 @@ export type DesignPatch = {
   text_pos?: string;
   accent_color?: string;
   bg_photo_id?: string | null;
+  main_font_size?: number | null;
+  sub_font_size?: number | null;
+  line_height?: number | null;
 };
 
 export async function updateSlideDesignAction(

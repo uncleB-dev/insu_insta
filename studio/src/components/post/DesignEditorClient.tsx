@@ -6,6 +6,12 @@ import { toast } from 'sonner';
 import { PRINCIPLES, type PrincipleKey } from '@/lib/principles';
 import type { Principle, Speaker } from '@/lib/supabase/types';
 import {
+  SlideCanvas,
+  defaultLineHeight,
+  defaultMainFontSize,
+  defaultSubFontSize,
+} from './SlideCanvas';
+import {
   applyDesignToAllAction,
   generateBackgroundAction,
   setSlideBackgroundAction,
@@ -27,6 +33,10 @@ export type DesignSlide = {
   accent_color: string;
   bg_photo_id: string | null;
   bg_src: string;
+  /** null = use layout default */
+  main_font_size: number | null;
+  sub_font_size: number | null;
+  line_height: number | null;
 };
 
 export type LibraryPhoto = {
@@ -59,80 +69,133 @@ function fallbackBg(slide: DesignSlide) {
   return slide.bg_src || `https://picsum.photos/seed/insu${slide.ord + 10}/800/800`;
 }
 
+// Use shared SlideCanvas as single source of truth for rendering
 function SlidePreview({ slide }: { slide: DesignSlide }) {
-  const accent = ACCENT_MAP[slide.accent_color] || '#00FF88';
-  const justifyContent =
-    slide.text_pos === 'top' ? 'flex-start' : slide.text_pos === 'bot' ? 'flex-end' : 'center';
+  return (
+    <div className="rounded-lg overflow-hidden" style={{ width: 'min(540px, 100%)' }}>
+      <SlideCanvas slide={slide} size={540} />
+    </div>
+  );
+}
+
+// ─── Font size + line height controls ───────────────────────
+// Plan SC-1, SC-2, SC-3, SC-5: per-slide override sliders with reset.
+function FontSizeSlider({
+  label,
+  value,
+  defaultValue,
+  min,
+  max,
+  step,
+  unit,
+  onChange,
+  onReset,
+}: {
+  label: string;
+  value: number | null;
+  defaultValue: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (next: number) => void;
+  onReset: () => void;
+}) {
+  const isCustom = value !== null;
+  const current = value ?? defaultValue;
+  const display = step < 1 ? current.toFixed(2) : String(current);
 
   return (
-    <div
-      className="relative overflow-hidden rounded-lg"
-      style={{
-        aspectRatio: '1/1',
-        width: 'min(540px, 100%)',
-        backgroundImage: `url(${fallbackBg(slide)})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
+    <div>
       <div
-        className="absolute inset-0"
-        style={{
-          background: `rgba(0,0,0,${slide.overlay / 100})`,
-          backdropFilter: `blur(${slide.blur}px)`,
-          WebkitBackdropFilter: `blur(${slide.blur}px)`,
-        }}
-      />
-      <div
-        className="absolute inset-0 flex flex-col p-8"
-        style={{ justifyContent, color: '#fff' }}
+        className="flex justify-between items-center text-[13px] font-semibold mb-2"
+        style={{ color: 'var(--text-primary)' }}
       >
-        {slide.layout === 'A' || slide.layout === 'B' ? (
-          <div
-            style={{
-              alignSelf: slide.layout === 'A' ? 'flex-start' : 'flex-end',
-              maxWidth: '80%',
-              background: slide.layout === 'A' ? '#fff' : '#FEE500',
-              color: '#000',
-              padding: '14px 18px',
-              borderRadius: slide.layout === 'A' ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-              fontSize: 20,
-              fontWeight: 600,
-              lineHeight: 1.4,
-            }}
-          >
-            {slide.main}
-          </div>
-        ) : slide.layout === 'C' ? (
-          <div
-            className="rounded-xl p-6"
-            style={{ background: 'rgba(0,0,0,0.6)', border: `2px solid ${accent}` }}
-          >
-            <div className="text-[14px] font-bold mb-2" style={{ color: accent }}>Q.</div>
-            <div className="text-[22px] font-bold leading-snug">{slide.main}</div>
-          </div>
-        ) : (
-          <div
-            className="text-center text-[28px] font-black leading-tight"
-            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}
-          >
-            {slide.main}
-          </div>
-        )}
-        {slide.sub && (
-          <div
-            className="mt-3.5 text-[13px] leading-snug"
-            style={{
-              color: '#ddd',
-              textAlign: ['A', 'B'].includes(slide.layout) ? 'inherit' : 'center',
-              textShadow: '0 1px 6px rgba(0,0,0,0.6)',
-            }}
-          >
-            {slide.sub}
-          </div>
-        )}
+        <span>
+          {label}
+          {!isCustom && (
+            <span className="text-[10px] ml-1" style={{ color: 'var(--text-muted)' }}>
+              (기본값)
+            </span>
+          )}
+        </span>
+        <div className="flex items-center gap-2">
+          <span style={{ color: 'var(--text-muted)' }}>
+            {display}
+            {unit}
+          </span>
+          {isCustom && (
+            <button
+              className="text-[11px] px-1.5 py-0.5 rounded transition-colors"
+              style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none' }}
+              onClick={onReset}
+              title="레이아웃 기본값으로 복원"
+            >
+              ↺
+            </button>
+          )}
+        </div>
       </div>
+      <input
+        type="range"
+        className="w-full h-1 rounded-full outline-none cursor-pointer"
+        style={{
+          accentColor: isCustom ? 'var(--brand-accent)' : 'var(--text-muted)',
+        }}
+        min={min}
+        max={max}
+        step={step}
+        value={current}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
     </div>
+  );
+}
+
+function FontSizeControls({
+  sel,
+  editSelected,
+}: {
+  sel: DesignSlide;
+  editSelected: (patch: import('@/app/(chrome)/posts/[id]/design/actions').DesignPatch) => void;
+}) {
+  return (
+    <>
+      <div className="h-px" style={{ background: 'var(--border)' }} />
+      <FontSizeSlider
+        label="메인 글자 크기"
+        value={sel.main_font_size}
+        defaultValue={defaultMainFontSize(sel.layout)}
+        min={16}
+        max={64}
+        step={1}
+        unit="px"
+        onChange={(v) => editSelected({ main_font_size: v })}
+        onReset={() => editSelected({ main_font_size: null })}
+      />
+      <FontSizeSlider
+        label="보조 글자 크기"
+        value={sel.sub_font_size}
+        defaultValue={defaultSubFontSize(sel.layout)}
+        min={10}
+        max={32}
+        step={1}
+        unit="px"
+        onChange={(v) => editSelected({ sub_font_size: v })}
+        onReset={() => editSelected({ sub_font_size: null })}
+      />
+      <FontSizeSlider
+        label="줄 간격"
+        value={sel.line_height}
+        defaultValue={defaultLineHeight(sel.layout)}
+        min={1.0}
+        max={2.0}
+        step={0.05}
+        unit=""
+        onChange={(v) => editSelected({ line_height: Number(v.toFixed(2)) })}
+        onReset={() => editSelected({ line_height: null })}
+      />
+    </>
   );
 }
 
@@ -602,6 +665,9 @@ export function DesignEditorClient({
                 ))}
               </div>
             </div>
+
+            {/* 글자 크기 / 줄 간격 — design-font-size 기능 */}
+            <FontSizeControls sel={sel} editSelected={editSelected} />
           </div>
         </div>
       </div>

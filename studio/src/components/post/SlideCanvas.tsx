@@ -1,5 +1,8 @@
 // Renders a single slide at any size — used for preview carousel and ZIP export.
-// Pixel-equivalent to DesignEditorClient's SlidePreview but parameterised for size.
+// Single source of truth for slide visuals; respects per-slide font size + line height
+// overrides with layout-based defaults as fallback.
+//
+// Design Ref: docs/01-plan/features/design-font-size.plan.md §7.2
 
 import type { Principle } from '@/lib/supabase/types';
 
@@ -14,6 +17,12 @@ export type CanvasSlide = {
   accent_color: string;
   bg_src: string;
   ord: number;
+  /** null/undefined = use layout default */
+  main_font_size?: number | null;
+  /** null/undefined = use layout default */
+  sub_font_size?: number | null;
+  /** null/undefined = use layout default (1.4) */
+  line_height?: number | null;
 };
 
 const ACCENT_MAP: Record<string, string> = {
@@ -22,6 +31,43 @@ const ACCENT_MAP: Record<string, string> = {
   red: '#FF4D6D',
   white: '#FFFFFF',
 };
+
+// ─── Layout-based defaults ──────────────────────────────────
+// Plan SC-8: backward compat — null fields render identically to pre-migration.
+export function defaultMainFontSize(layout: string): number {
+  if (layout === 'A' || layout === 'B') return 20;
+  if (layout === 'C') return 22;
+  return 28; // D~I
+}
+
+export function defaultSubFontSize(_layout: string): number {
+  return 13;
+}
+
+export function defaultLineHeight(_layout: string): number {
+  return 1.4;
+}
+
+export function effectiveMainFontSize(
+  layout: string,
+  override?: number | null,
+): number {
+  return override ?? defaultMainFontSize(layout);
+}
+
+export function effectiveSubFontSize(
+  layout: string,
+  override?: number | null,
+): number {
+  return override ?? defaultSubFontSize(layout);
+}
+
+export function effectiveLineHeight(
+  layout: string,
+  override?: number | null,
+): number {
+  return override ?? defaultLineHeight(layout);
+}
 
 export function SlideCanvas({
   slide,
@@ -40,9 +86,14 @@ export function SlideCanvas({
   const bg =
     slide.bg_src || `https://picsum.photos/seed/insu${slide.ord + 10}/800/800`;
 
-  // Scale paddings/text proportionally to size for ZIP capture at 1080
+  // Plan SC-7: scale paddings/text proportionally to size for ZIP capture at 1080
   const scale = size / 540;
   const px = (n: number) => n * scale;
+
+  // Effective font sizes (override with fallback to layout default)
+  const mainSize = effectiveMainFontSize(slide.layout, slide.main_font_size);
+  const subSize = effectiveSubFontSize(slide.layout, slide.sub_font_size);
+  const lh = effectiveLineHeight(slide.layout, slide.line_height);
 
   return (
     <div
@@ -79,9 +130,10 @@ export function SlideCanvas({
                 slide.layout === 'A'
                   ? `${px(4)}px ${px(16)}px ${px(16)}px ${px(16)}px`
                   : `${px(16)}px ${px(4)}px ${px(16)}px ${px(16)}px`,
-              fontSize: px(20),
+              fontSize: px(mainSize),
               fontWeight: 600,
-              lineHeight: 1.4,
+              lineHeight: lh,
+              wordBreak: 'keep-all',
             }}
           >
             {slide.main}
@@ -100,7 +152,9 @@ export function SlideCanvas({
             >
               Q.
             </div>
-            <div style={{ fontSize: px(22), fontWeight: 700, lineHeight: 1.35 }}>
+            <div
+              style={{ fontSize: px(mainSize), fontWeight: 700, lineHeight: lh, wordBreak: 'keep-all' }}
+            >
               {slide.main}
             </div>
           </div>
@@ -108,10 +162,11 @@ export function SlideCanvas({
           <div
             style={{
               textAlign: 'center',
-              fontSize: px(28),
+              fontSize: px(mainSize),
               fontWeight: 900,
-              lineHeight: 1.2,
+              lineHeight: lh,
               textShadow: `0 ${px(2)}px ${px(12)}px rgba(0,0,0,0.6)`,
+              wordBreak: 'keep-all',
             }}
           >
             {slide.main}
@@ -121,11 +176,12 @@ export function SlideCanvas({
           <div
             style={{
               marginTop: px(14),
-              fontSize: px(13),
-              lineHeight: 1.35,
+              fontSize: px(subSize),
+              lineHeight: lh,
               color: '#ddd',
               textAlign: ['A', 'B'].includes(slide.layout) ? 'inherit' : 'center',
               textShadow: `0 ${px(1)}px ${px(6)}px rgba(0,0,0,0.6)`,
+              wordBreak: 'keep-all',
             }}
           >
             {slide.sub}
