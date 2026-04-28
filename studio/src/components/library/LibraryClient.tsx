@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -29,6 +29,52 @@ export type LibraryTemplateRow = {
   active: boolean;
   sort_order: number;
 };
+
+// Responsive 1:1 preview that scales a 540px SlideCanvas to fill the card width.
+function TemplatePreview({ sample }: { sample: CanvasSlide }) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(0.45);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setScale(w / 540);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="rounded-lg overflow-hidden"
+      style={{
+        width: '100%',
+        aspectRatio: '1/1',
+        position: 'relative',
+        background: '#0d0d0d',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 540,
+          height: 540,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <SlideCanvas slide={sample} size={540} />
+      </div>
+    </div>
+  );
+}
 
 // Sample slide data for template previews
 const PRINCIPLE_LABEL: Record<Principle, string> = {
@@ -553,24 +599,7 @@ export function LibraryClient({
                     opacity: tpl.active ? 1 : 0.5,
                   }}
                 >
-                  {/* 미니 미리보기 */}
-                  <div
-                    className="rounded-lg overflow-hidden"
-                    style={{ width: '100%', aspectRatio: '1/1', position: 'relative' }}
-                  >
-                    <div
-                      style={{
-                        width: 200,
-                        height: 200,
-                        transform: 'scale(1)',
-                        transformOrigin: 'top left',
-                        position: 'absolute',
-                        inset: 0,
-                      }}
-                    >
-                      <SlideCanvas slide={sample} size={200} />
-                    </div>
-                  </div>
+                  <TemplatePreview sample={sample} />
 
                   <div>
                     <div className="text-[16px] font-semibold mb-0.5">{tpl.name}</div>
