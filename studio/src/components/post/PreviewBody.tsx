@@ -359,7 +359,7 @@ export function PreviewBody({
           </div>
         </div>
 
-        {/* 댓글 유도 CTA → reward_link 편집 카드 (engagement-polish module 2d) */}
+        {/* 댓글 유도 CTA → reward_link 비공개 메모 (engagement-polish module 2d) */}
         {isCommentLink && (
           <div
             className="rounded-xl border p-6"
@@ -369,11 +369,11 @@ export function PreviewBody({
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[18px]">💬</span>
-              <div className="text-[18px] font-semibold">댓글 유도 — 발송할 자료/링크</div>
+              <span className="text-[18px]">🔒</span>
+              <div className="text-[18px] font-semibold">댓글 단 사람에게 보낼 링크 (비공개 메모)</div>
             </div>
             <p className="text-[12px] mb-3 m-0" style={{ color: 'var(--text-secondary)' }}>
-              댓글 단 사람에게 보낼 링크 또는 짧은 안내문. AI 캡션 생성 시 자동으로 안내됩니다.
+              나만 보는 메모입니다. 캡션·슬라이드에 노출되지 않으며, 게시 후 댓글 단 분들에게 DM으로 직접 보내실 때 참고용입니다.
             </p>
             <textarea
               className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none transition-colors leading-relaxed"
@@ -384,7 +384,7 @@ export function PreviewBody({
                 minHeight: 60,
               }}
               rows={2}
-              placeholder="https://notion.so/xxx 또는 카카오톡 채널 링크..."
+              placeholder="https://notion.so/xxx 또는 카카오톡 채널 링크 (메모용)"
               value={rewardLink}
               onChange={(e) => onRewardLinkChange(e.target.value)}
             />

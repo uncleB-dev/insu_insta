@@ -73,10 +73,8 @@ function NewPostInner() {
     if (t) setTopic(t);
   }, [searchParams]);
 
-  const canGenerate =
-    topic.trim() &&
-    facts.trim() &&
-    (cta !== 'comment_link' || rewardLink.trim());
+  // reward_link은 비공개 메모 — 선택 입력 (필수 검증 X)
+  const canGenerate = topic.trim() && facts.trim();
 
   const handleGenerate = () => {
     if (!canGenerate || loading) return;
@@ -214,22 +212,22 @@ function NewPostInner() {
             </div>
           </div>
 
-          {/* 댓글 유도 CTA 활성 시 reward_link 입력 (engagement-polish module 2) */}
+          {/* 댓글 유도 CTA 활성 시 reward_link 비공개 메모 (engagement-polish module 2) */}
           {cta === 'comment_link' && (
             <div>
-              <FieldLabel required>댓글 작성자에게 보낼 링크/안내</FieldLabel>
+              <FieldLabel>🔒 댓글 단 사람에게 보낼 링크 (비공개 메모)</FieldLabel>
               <textarea
                 className={inputCls}
                 style={{ ...inputStyle, minHeight: 80 }}
                 rows={3}
-                placeholder="예: https://notion.so/xxx 또는 카카오톡 채널 링크 등 (댓글 단 사람에게 DM/댓글로 보낼 자료)"
+                placeholder="예: https://notion.so/xxx 또는 카카오톡 채널 링크 (메모용 — 캡션에 노출 X)"
                 value={rewardLink}
                 onChange={e => setRewardLink(e.target.value)}
                 onFocus={e => (e.target.style.borderColor = 'var(--brand-accent)')}
                 onBlur={e => (e.target.style.borderColor = 'var(--border)')}
               />
               <p className="text-[12px] mt-1.5 m-0" style={{ color: 'var(--text-muted)' }}>
-                AI가 9번 슬라이드와 캡션에서 이 링크를 자연스럽게 안내해줍니다
+                나중에 댓글 다신 분들께 DM으로 직접 보내실 때 참고할 메모입니다. AI 캡션·슬라이드에는 절대 노출되지 않습니다. (선택 입력)
               </p>
             </div>
           )}
