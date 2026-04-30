@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram OCR 추출기</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --accent: #e1306c;
+      --accent-light: #f77737;
+      --text: #f0f0f0;
+      --text-muted: #888;
+      --tag-bg: #2a1a22;
+      --tag-text: #f77737;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    .container { max-width: 780px; margin: 0 auto; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 32px; }
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .header p { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Input row */
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .input-row input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--text-muted); }
+    .btn-extract {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 22px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .btn-extract:hover { opacity: 0.88; }
+    .btn-extract:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Loading */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-box {
+      display: none;
+      background: #2a1010;
+      border: 1px solid #5a2020;
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      color: #ff7070;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    /* Result sections */
+    .result { display: none; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .btn-copy {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .btn-copy:hover { color: var(--text); border-color: #444; }
+    .btn-copy.copied { color: #4caf50; border-color: #4caf50; }
+
+    .caption-text {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    /* Hashtags */
+    .hashtags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .tag {
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    /* Image rows */
+    .image-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .image-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .image-row:first-child { padding-top: 0; }
+
+    .thumb-wrap {
+      flex-shrink: 0;
+      width: 90px;
+      text-align: center;
+    }
+    .thumb-wrap img {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .thumb-index {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .ocr-text {
+      flex: 1;
+      white-space: pre-wrap;
+      line-height: 1.65;
+      font-size: 0.93rem;
+      color: var(--text);
+      min-height: 90px;
+    }
+    .ocr-empty { color: var(--text-muted); font-style: italic; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Instagram OCR 추출기</h1>
+    <p>인스타그램 게시물 URL을 입력하면 캡션·해시태그·이미지 텍스트를 모두 추출합니다</p>
+  </div>
+
+  <div class="input-row">
+    <input
+      id="urlInput"
+      type="url"
+      placeholder="https://www.instagram.com/p/..."
+      autocomplete="off"
+    />
+    <button class="btn-extract" id="btnExtract" onclick="extract()">추출하기</button>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div id="loadingMsg">게시물 다운로드 중...</div>
+  </div>
+
+  <div class="result" id="result">
+
+    <!-- Caption -->
+    <div class="card" id="captionCard">
+      <div class="section-header">
+        <span class="section-title">캡션</span>
+        <button class="btn-copy" onclick="copyText('captionText', this)">복사</button>
+      </div>
+      <div class="caption-text" id="captionText"></div>
+      <div class="hashtags" id="hashtagList"></div>
+    </div>
+
+    <!-- Images -->
+    <div class="card" id="imagesCard">
+      <div class="section-header">
+        <span class="section-title" id="imagesTitle">이미지 텍스트</span>
+        <button class="btn-copy" onclick="copyAll(this)">전체 복사</button>
+      </div>
+      <div id="imageRows"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const LOADING_MESSAGES = [
+    "게시물 다운로드 중...",
+    "이미지 분석 중 (Gemini OCR)...",
+    "텍스트 정리 중...",
+  ];
+  let loadingTimer = null;
+
+  function showLoading() {
+    let i = 0;
+    document.getElementById("loadingMsg").textContent = LOADING_MESSAGES[0];
+    loadingTimer = setInterval(() => {
+      i = (i + 1) % LOADING_MESSAGES.length;
+      document.getElementById("loadingMsg").textContent = LOADING_MESSAGES[i];
+    }, 3000);
+    document.getElementById("loading").style.display = "block";
+  }
+
+  function hideLoading() {
+    clearInterval(loadingTimer);
+    document.getElementById("loading").style.display = "none";
+  }
+
+  function showError(msg) {
+    const box = document.getElementById("errorBox");
+    box.textContent = msg;
+    box.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("errorBox").style.display = "none";
+  }
+
+  function setButtonState(disabled) {
+    document.getElementById("btnExtract").disabled = disabled;
+  }
+
+  async function extract() {
+    const url = document.getElementById("urlInput").value.trim();
+    if (!url) {
+      showError("URL을 입력해주세요");
+      return;
+    }
+
+    hideError();
+    document.getElementById("result").style.display = "none";
+    setButtonState(true);
+    showLoading();
+
+    try {
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.error || "알 수 없는 오류가 발생했습니다");
+        return;
+      }
+
+      renderResult(data);
+    } catch (e) {
+      showError("서버에 연결할 수 없습니다. Flask 서버가 실행 중인지 확인해주세요");
+    } finally {
+      hideLoading();
+      setButtonState(false);
+    }
+  }
+
+  function renderResult(data) {
+    // Caption
+    const captionEl = document.getElementById("captionText");
+    captionEl.textContent = data.caption_text || "(캡션 없음)";
+
+    // Hashtags
+    const tagList = document.getElementById("hashtagList");
+    tagList.innerHTML = "";
+    if (data.hashtags && data.hashtags.length > 0) {
+      data.hashtags.forEach(tag => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.textContent = tag;
+        tagList.appendChild(span);
+      });
+      tagList.style.display = "flex";
+    } else {
+      tagList.style.display = "none";
+    }
+
+    // Image rows
+    const imagesTitle = document.getElementById("imagesTitle");
+    imagesTitle.textContent = `이미지 텍스트 (${data.image_count}장)`;
+
+    const rowsEl = document.getElementById("imageRows");
+    rowsEl.innerHTML = "";
+
+    if (!data.images || data.images.length === 0) {
+      document.getElementById("imagesCard").style.display = "none";
+    } else {
+      document.getElementById("imagesCard").style.display = "block";
+      data.images.forEach(img => {
+        const row = document.createElement("div");
+        row.className = "image-row";
+
+        const thumbWrap = document.createElement("div");
+        thumbWrap.className = "thumb-wrap";
+
+        const imgEl = document.createElement("img");
+        imgEl.src = img.thumbnail;
+        imgEl.alt = `이미지 ${img.index}`;
+
+        const idx = document.createElement("div");
+        idx.className = "thumb-index";
+        idx.textContent = `${img.index}장`;
+
+        thumbWrap.appendChild(imgEl);
+        thumbWrap.appendChild(idx);
+
+        const textEl = document.createElement("div");
+        if (img.ocr_text) {
+          textEl.className = "ocr-text";
+          textEl.textContent = img.ocr_text;
+        } else {
+          textEl.className = "ocr-text ocr-empty";
+          textEl.textContent = "텍스트 없음";
+        }
+
+        row.appendChild(thumbWrap);
+        row.appendChild(textEl);
+        rowsEl.appendChild(row);
+      });
+    }
+
+    document.getElementById("result").style.display = "block";
+  }
+
+  function copyText(elementId, btn) {
+    const el = document.getElementById(elementId);
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      btn.textContent = "복사됨 ✓";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "복사";
+        btn.classList.remove("copied");
+      }, 2000);
+    });
+  }
+
+  function copyAll(btn) {
+    const parts = [];
+
+    const caption = document.getElementById("captionText").textContent;
+    if (caption && caption !== "(캡션 없음)") parts.push("=== 캡션 ===\n" + caption);
+
+    const tags = [...document.querySelectorAll(".tag")].map(t => t.textContent).join(" ");
+    if (tags) parts.push("=== 해시태그 ===\n" + tags);
+
+    const rows = document.querySelectorAll(".image-row");
+    if (rows.length) {
+      const imgTexts = [...rows].map((row, i) => {
+        const text = row.querySelector(".ocr-text").textContent;
+        return `=== 이미지 ${i + 1} ===\n${text}`;
+      });
+      parts.push(...imgTexts);
+    }
+
+    navigator.clipboard.writeText(parts.join("\n\n")).then(() => {
+      btn.textContent = "복사됨 ✓";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "전체 복사";
+        btn.classList.remove("copied");
+      }, 2000);
+    });
+  }
+
+  // Enter key submit
+  document.getElementById("urlInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") extract();
+  });
+</script>
+</body>
+</html>
