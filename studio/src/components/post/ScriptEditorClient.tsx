@@ -11,6 +11,7 @@ import { SlideCard } from '@/components/post/SlideCard';
 import { GuardrailScore } from '@/components/post/GuardrailScore';
 import { PrincipleBadge } from '@/components/post/PrincipleBadge';
 import { GuardedText } from '@/components/post/GuardedText';
+import { DebouncedTextarea } from '@/components/post/DebouncedTextarea';
 import {
   addSlideAction,
   deleteSlideAction,
@@ -203,7 +204,7 @@ function MultiMessageEditor({
               </button>
             </div>
           </div>
-          <textarea
+          <DebouncedTextarea
             className="w-full px-2.5 py-2 rounded text-[13px] outline-none resize-none"
             style={{
               background: 'var(--bg-secondary)',
@@ -212,8 +213,8 @@ function MultiMessageEditor({
               minHeight: 50,
             }}
             value={b.text ?? ''}
-            onChange={(e) =>
-              setBubble(b.idx, e.target.value, (b.speaker as Speaker) ?? defaultSpeaker)
+            onChange={(v) =>
+              setBubble(b.idx, v, (b.speaker as Speaker) ?? defaultSpeaker)
             }
           />
         </div>
@@ -578,14 +579,12 @@ export function ScriptEditorClient({
 
               <div>
                 <FieldLabel>장면 묘사</FieldLabel>
-                <textarea
+                <DebouncedTextarea
                   className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none"
                   style={{ ...textareaStyle, minHeight: 80 }}
                   rows={2}
                   value={selected.scene}
-                  onChange={(e) =>
-                    editSelected({ scene: e.target.value }, { scene: e.target.value })
-                  }
+                  onChange={(v) => editSelected({ scene: v }, { scene: v })}
                 />
               </div>
 
@@ -601,7 +600,7 @@ export function ScriptEditorClient({
                     )}
                   </span>
                 </FieldLabel>
-                <textarea
+                <DebouncedTextarea
                   className="w-full px-3.5 py-3 rounded-lg border text-[14px] leading-relaxed outline-none resize-none"
                   style={{
                     background: 'var(--bg-tertiary)',
@@ -610,8 +609,8 @@ export function ScriptEditorClient({
                     minHeight: 80,
                   }}
                   value={selected.main}
-                  onChange={(e) =>
-                    editSelected({ main_text: e.target.value }, { main: e.target.value }, true)
+                  onChange={(v) =>
+                    editSelected({ main_text: v }, { main: v }, true)
                   }
                 />
                 {selected.guards.length > 0 && (
@@ -639,14 +638,12 @@ export function ScriptEditorClient({
 
               <div>
                 <FieldLabel>보조 텍스트</FieldLabel>
-                <textarea
+                <DebouncedTextarea
                   className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none"
                   style={{ ...textareaStyle, minHeight: 60 }}
                   rows={2}
                   value={selected.sub}
-                  onChange={(e) =>
-                    editSelected({ sub_text: e.target.value }, { sub: e.target.value })
-                  }
+                  onChange={(v) => editSelected({ sub_text: v }, { sub: v })}
                 />
               </div>
 

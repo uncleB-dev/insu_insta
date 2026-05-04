@@ -215,6 +215,7 @@ export function SlideCanvas({
                     fontWeight: 600,
                     lineHeight: lh,
                     wordBreak: 'keep-all',
+                    whiteSpace: 'pre-wrap',
                   }}
                 >
                   {b.text}
@@ -251,6 +252,7 @@ export function SlideCanvas({
                 fontWeight: 700,
                 lineHeight: lh,
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
                 color: '#fff',
               }}
             >
@@ -284,6 +286,7 @@ export function SlideCanvas({
                 lineHeight: 1,
                 marginBottom: px(12),
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
               }}
             >
               {bigText}
@@ -295,6 +298,7 @@ export function SlideCanvas({
                 fontWeight: 600,
                 lineHeight: lh,
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
               }}
             >
               {labelText}
@@ -330,6 +334,7 @@ export function SlideCanvas({
                 lineHeight: lh,
                 fontStyle: 'italic',
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
                 textShadow: `0 ${px(2)}px ${px(8)}px rgba(0,0,0,0.6)`,
               }}
             >
@@ -378,6 +383,7 @@ export function SlideCanvas({
                   fontWeight: 600,
                   lineHeight: lh,
                   wordBreak: 'keep-all',
+                  whiteSpace: 'pre-wrap',
                 }}
               >
                 <span
@@ -424,6 +430,7 @@ export function SlideCanvas({
                 fontWeight: 700,
                 lineHeight: lh,
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
               }}
             >
               <div
@@ -461,6 +468,7 @@ export function SlideCanvas({
                 fontWeight: 700,
                 lineHeight: lh,
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
               }}
             >
               <div
@@ -496,6 +504,7 @@ export function SlideCanvas({
                 fontWeight: 900,
                 lineHeight: lh,
                 wordBreak: 'keep-all',
+                whiteSpace: 'pre-wrap',
                 marginBottom: subText ? px(10) : 0,
               }}
             >
@@ -508,6 +517,7 @@ export function SlideCanvas({
                   fontWeight: 600,
                   lineHeight: lh,
                   wordBreak: 'keep-all',
+                  whiteSpace: 'pre-wrap',
                   opacity: 0.85,
                 }}
               >
@@ -530,6 +540,7 @@ export function SlideCanvas({
               color: '#fff',
               textShadow: `0 ${px(2)}px ${px(12)}px rgba(0,0,0,0.6)`,
               wordBreak: 'keep-all',
+              whiteSpace: 'pre-wrap',
             }}
           >
             {mainText}
@@ -581,6 +592,7 @@ export function SlideCanvas({
                 layout === 'msg_left' || layout === 'msg_right' ? 'inherit' : 'center',
               textShadow: `0 ${px(1)}px ${px(6)}px rgba(0,0,0,0.6)`,
               wordBreak: 'keep-all',
+              whiteSpace: 'pre-wrap',
             }}
           >
             {subText}
