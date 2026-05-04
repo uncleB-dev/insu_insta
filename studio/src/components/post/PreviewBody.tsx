@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { PrincipleBadge } from './PrincipleBadge';
 import { PhoneMockup } from './PhoneMockup';
 import { SlideCanvas, type CanvasSlide } from './SlideCanvas';
+import { DebouncedTextarea } from './DebouncedTextarea';
 import {
   addHashtagAction,
   generateCaptionHashtagsAction,
@@ -464,7 +465,7 @@ export function PreviewBody({
             <p className="text-[12px] mb-3 m-0" style={{ color: 'var(--text-secondary)' }}>
               나만 보는 메모입니다. 캡션·슬라이드에 노출되지 않으며, 게시 후 댓글 단 분들에게 DM으로 직접 보내실 때 참고용입니다.
             </p>
-            <textarea
+            <DebouncedTextarea
               className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none transition-colors leading-relaxed"
               style={{
                 background: 'var(--bg-tertiary)',
@@ -475,7 +476,7 @@ export function PreviewBody({
               rows={2}
               placeholder="https://notion.so/xxx 또는 카카오톡 채널 링크 (메모용)"
               value={rewardLink}
-              onChange={(e) => onRewardLinkChange(e.target.value)}
+              onChange={(v) => onRewardLinkChange(v)}
             />
           </div>
         )}
@@ -511,16 +512,17 @@ export function PreviewBody({
             </div>
           </div>
           {editingCaption ? (
-            <textarea
+            <DebouncedTextarea
               className="w-full px-3 py-2.5 rounded-lg border text-[14px] outline-none resize-none transition-colors leading-relaxed"
               style={{
                 background: 'var(--bg-tertiary)',
                 borderColor: 'var(--border)',
                 color: 'var(--text-primary)',
+                minHeight: 120,
               }}
               rows={5}
               value={caption}
-              onChange={(e) => onCaptionChange(e.target.value)}
+              onChange={(v) => onCaptionChange(v)}
             />
           ) : (
             <div
