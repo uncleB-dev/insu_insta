@@ -186,13 +186,14 @@ export function ScriptOneScreenEditor({
         { main: text, speaker, layout },
       );
     } else {
+      // null = slot hidden; '' or non-empty string = slot visible (even if blank)
       const tk = `main_text${idx}` as 'main_text2' | 'main_text3' | 'main_text4';
       const sk = `speaker${idx}` as 'speaker2' | 'speaker3' | 'speaker4';
       const ltk = `main${idx}` as 'main2' | 'main3' | 'main4';
       editSlide(
         slide.id,
-        { [tk]: text || null, [sk]: text ? speaker : null } as SlidePatch,
-        { [ltk]: text || null, [sk]: text ? speaker : null } as Partial<EditorSlide>,
+        { [tk]: text, [sk]: speaker } as SlidePatch,
+        { [ltk]: text, [sk]: speaker } as Partial<EditorSlide>,
       );
     }
   };
@@ -440,14 +441,15 @@ function ScriptCardEditor({
     { idx: 4 as const, text: slide.main4, speaker: slide.speaker4 },
   ];
 
-  // Find first empty slot for "add" button (only for slots 2-4)
+  // null = slot hidden; '' (or non-empty) = slot visible
+  // Find first hidden slot (text == null) for "add" button (slots 2-4)
   const firstEmptyForAdd = bubbles.find(
-    (b) => b.idx > 1 && (!b.text || b.text.trim() === ''),
+    (b) => b.idx > 1 && (b.text === null || b.text === undefined),
   )?.idx as 2 | 3 | 4 | undefined;
 
-  // Visible bubbles: slot 1 always; slots 2-4 only if non-empty
+  // Visible bubbles: slot 1 always; slots 2-4 only if text is not null
   const visibleBubbles = bubbles.filter(
-    (b) => b.idx === 1 || (b.text && b.text.trim() !== ''),
+    (b) => b.idx === 1 || (b.text !== null && b.text !== undefined),
   );
 
   return (
@@ -577,7 +579,7 @@ function ScriptCardEditor({
             onClick={() =>
               onSetBubble(
                 firstEmptyForAdd,
-                ' ',
+                '',
                 slide.principle === 'doubt' ? 'niece' : 'uncle',
               )
             }
