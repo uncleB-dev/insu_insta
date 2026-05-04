@@ -31,6 +31,9 @@ type SlideRow = {
   speaker2: Speaker | null;
   speaker3: Speaker | null;
   speaker4: Speaker | null;
+  inset_image_url: string | null;
+  inset_image_pos: string | null;
+  inset_image_size: string | null;
   bg_photo: { id: string; src: string } | null;
 };
 
@@ -64,7 +67,7 @@ export default async function DesignPage({
       supabase
         .from('slides')
         .select(
-          `id, ord, principle, speaker, main_text, sub_text, emphasis, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
+          `id, ord, principle, speaker, main_text, sub_text, emphasis, layout, blur, overlay, text_pos, accent_color, bg_photo_id, main_font_size, sub_font_size, line_height, main_text2, main_text3, main_text4, speaker2, speaker3, speaker4, inset_image_url, inset_image_pos, inset_image_size, bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
         )
         .eq('post_id', id)
         .order('ord', { ascending: true }),
@@ -112,6 +115,9 @@ export default async function DesignPage({
       speaker2: row.speaker2,
       speaker3: row.speaker3,
       speaker4: row.speaker4,
+      inset_image_url: row.inset_image_url,
+      inset_image_pos: row.inset_image_pos,
+      inset_image_size: row.inset_image_size,
       header_text: headerText,
       header_image_url: headerImageUrl,
     }),

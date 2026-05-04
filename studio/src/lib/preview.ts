@@ -46,6 +46,7 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
          layout, blur, overlay, text_pos, accent_color, bg_photo_id,
          main_font_size, sub_font_size, line_height,
          main_text2, main_text3, main_text4, speaker2, speaker3, speaker4,
+         inset_image_url, inset_image_pos, inset_image_size,
          bg_photo:library_photos!slides_bg_photo_fk(id, src)`,
       )
       .eq('post_id', postId)
@@ -80,6 +81,9 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     speaker2: Speaker | null;
     speaker3: Speaker | null;
     speaker4: Speaker | null;
+    inset_image_url: string | null;
+    inset_image_pos: string | null;
+    inset_image_size: string | null;
     bg_photo: { id: string; src: string } | null;
   };
 
@@ -106,6 +110,9 @@ export async function loadPreviewBundle(postId: string): Promise<PreviewBundle |
     speaker2: r.speaker2,
     speaker3: r.speaker3,
     speaker4: r.speaker4,
+    inset_image_url: r.inset_image_url,
+    inset_image_pos: r.inset_image_pos,
+    inset_image_size: r.inset_image_size,
     header_text: post.header_text ?? null,
     header_image_url: post.header_image_url ?? null,
   }));

@@ -4,6 +4,7 @@
 //
 // Design Ref: docs/01-plan/features/slide-templates.plan.md §7.2 — 9 distinct templates
 
+import type { CSSProperties } from 'react';
 import type { Principle, Speaker } from '@/lib/supabase/types';
 
 export type CanvasSlide = {
@@ -33,6 +34,17 @@ export type CanvasSlide = {
   // Per-post header (passed from parent)
   header_text?: string | null;
   header_image_url?: string | null;
+  // manual-flow-redesign Module 4: inset image
+  inset_image_url?: string | null;
+  inset_image_pos?: string | null; // top_left | top_right | bottom_left | bottom_right | center
+  inset_image_size?: string | null; // small | medium | large
+};
+
+// manual-flow-redesign Module 4: inset image size mapping (px at 540 reference)
+const INSET_SIZE_PX: Record<string, number> = {
+  small: 72,
+  medium: 120,
+  large: 168,
 };
 
 const ACCENT_MAP: Record<string, string> = {
@@ -647,6 +659,49 @@ export function SlideCanvas({
           )}
         </div>
       )}
+
+      {/* manual-flow-redesign Module 4: inset image (small auxiliary illustration) */}
+      {slide.inset_image_url && (() => {
+        const sz = INSET_SIZE_PX[slide.inset_image_size ?? 'medium'] ?? 120;
+        const pos = slide.inset_image_pos ?? 'bottom_right';
+        const offset = px(20);
+        const posStyle: CSSProperties = {
+          position: 'absolute',
+          width: px(sz),
+          height: px(sz),
+          objectFit: 'contain',
+          zIndex: 4,
+        };
+        if (pos === 'top_left') {
+          posStyle.top = offset;
+          posStyle.left = offset;
+        } else if (pos === 'top_right') {
+          posStyle.top = offset;
+          posStyle.right = offset;
+        } else if (pos === 'bottom_left') {
+          posStyle.bottom = offset;
+          posStyle.left = offset;
+        } else if (pos === 'center') {
+          posStyle.top = '50%';
+          posStyle.left = '50%';
+          posStyle.transform = 'translate(-50%, -50%)';
+        } else {
+          // bottom_right (default)
+          posStyle.bottom = offset;
+          posStyle.right = offset;
+        }
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={slide.inset_image_url}
+            alt=""
+            style={posStyle}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        );
+      })()}
 
       {showIndex && totalSlides && (
         <div

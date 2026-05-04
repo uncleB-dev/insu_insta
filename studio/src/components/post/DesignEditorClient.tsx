@@ -47,6 +47,10 @@ export type DesignSlide = {
   speaker4: Speaker | null;
   header_text: string | null;
   header_image_url: string | null;
+  // manual-flow-redesign Module 4: inset image
+  inset_image_url: string | null;
+  inset_image_pos: string | null;
+  inset_image_size: string | null;
 };
 
 export type LibraryPhoto = {
@@ -677,6 +681,135 @@ export function DesignEditorClient({
 
             {/* 글자 크기 / 줄 간격 — design-font-size 기능 */}
             <FontSizeControls sel={sel} editSelected={editSelected} />
+
+            {/* manual-flow-redesign Module 5: 카드 안 보조 이미지 */}
+            <div className="h-px" style={{ background: 'var(--border)' }} />
+            <div>
+              <div
+                className="text-[13px] font-semibold mb-2"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                보조 이미지 (카드 안)
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                <input
+                  type="text"
+                  placeholder="이미지 URL 붙여넣기"
+                  className="flex-1 px-2 py-1.5 rounded-md text-[12px] outline-none"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                  }}
+                  value={sel.inset_image_url ?? ''}
+                  onChange={(e) =>
+                    editSelected({
+                      inset_image_url: e.target.value || null,
+                      inset_image_pos: sel.inset_image_pos ?? 'bottom_right',
+                      inset_image_size: sel.inset_image_size ?? 'medium',
+                    })
+                  }
+                />
+                {sel.inset_image_url && (
+                  <button
+                    className="px-2 py-1.5 rounded-md text-[11px] transition-colors"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                    }}
+                    onClick={() =>
+                      editSelected({
+                        inset_image_url: null,
+                        inset_image_pos: null,
+                        inset_image_size: null,
+                      })
+                    }
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {sel.inset_image_url && (
+                <>
+                  <div className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>
+                    위치
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 mb-2">
+                    {(
+                      [
+                        ['top_left', '↖'],
+                        ['top_right', '↗'],
+                        ['center', '●'],
+                        ['bottom_left', '↙'],
+                        ['bottom_right', '↘'],
+                      ] as const
+                    ).map(([k, v]) => (
+                      <button
+                        key={k}
+                        className="py-1.5 rounded-md text-[12px] transition-all"
+                        style={{
+                          background:
+                            sel.inset_image_pos === k
+                              ? 'var(--brand-accent-bg)'
+                              : 'var(--bg-tertiary)',
+                          color:
+                            sel.inset_image_pos === k
+                              ? 'var(--brand-accent)'
+                              : 'var(--text-secondary)',
+                          border:
+                            sel.inset_image_pos === k
+                              ? '1px solid var(--brand-accent)'
+                              : '1px solid var(--border)',
+                        }}
+                        onClick={() => editSelected({ inset_image_pos: k })}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>
+                    크기
+                  </div>
+                  <div className="flex gap-1">
+                    {(
+                      [
+                        ['small', '작게'],
+                        ['medium', '보통'],
+                        ['large', '크게'],
+                      ] as const
+                    ).map(([k, v]) => (
+                      <button
+                        key={k}
+                        className="flex-1 py-1.5 rounded-md text-[12px] transition-all"
+                        style={{
+                          background:
+                            sel.inset_image_size === k
+                              ? 'var(--brand-accent-bg)'
+                              : 'var(--bg-tertiary)',
+                          color:
+                            sel.inset_image_size === k
+                              ? 'var(--brand-accent)'
+                              : 'var(--text-secondary)',
+                          border:
+                            sel.inset_image_size === k
+                              ? '1px solid var(--brand-accent)'
+                              : '1px solid var(--border)',
+                        }}
+                        onClick={() => editSelected({ inset_image_size: k })}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <p className="text-[11px] mt-1.5 m-0" style={{ color: 'var(--text-muted)' }}>
+                💡 라이브러리에서 URL을 복사해 붙여넣을 수 있어요
+              </p>
+            </div>
           </div>
         </div>
       </div>

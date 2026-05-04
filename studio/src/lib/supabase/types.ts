@@ -102,6 +102,9 @@ export interface SlideRow {
   speaker2: Speaker | null;
   speaker3: Speaker | null;
   speaker4: Speaker | null;
+  inset_image_url: string | null;
+  inset_image_pos: string | null;
+  inset_image_size: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -130,6 +133,9 @@ export interface SlideInsert {
   speaker2?: Speaker | null;
   speaker3?: Speaker | null;
   speaker4?: Speaker | null;
+  inset_image_url?: string | null;
+  inset_image_pos?: string | null;
+  inset_image_size?: string | null;
   created_at?: string;
   updated_at?: string;
 }

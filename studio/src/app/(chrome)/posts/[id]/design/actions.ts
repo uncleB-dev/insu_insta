@@ -14,6 +14,10 @@ export type DesignPatch = {
   main_font_size?: number | null;
   sub_font_size?: number | null;
   line_height?: number | null;
+  // manual-flow-redesign Module 4: inset image
+  inset_image_url?: string | null;
+  inset_image_pos?: string | null;
+  inset_image_size?: string | null;
 };
 
 export async function updateSlideDesignAction(

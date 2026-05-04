@@ -13,6 +13,7 @@ export type SlidePatch = {
   main_text?: string;
   sub_text?: string | null;
   emphasis?: string[];
+  layout?: string | null;
   // slide-header-multi-msg: additional bubbles
   main_text2?: string | null;
   main_text3?: string | null;

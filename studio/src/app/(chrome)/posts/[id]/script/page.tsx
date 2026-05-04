@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ScriptEditorClient } from '@/components/post/ScriptEditorClient';
+import { ScriptOneScreenEditor } from '@/components/post/ScriptOneScreenEditor';
 import { evaluateGuards, type GuardrailRule } from '@/lib/guardrails';
 import type { EditorSlide } from '@/lib/editor';
 import type { Principle, Speaker } from '@/lib/supabase/types';
@@ -68,5 +68,12 @@ export default async function ScriptPage({
     speaker4: row.speaker4,
   }));
 
-  return <ScriptEditorClient postId={id} initialSlides={slides} rules={rules} />;
+  return (
+    <ScriptOneScreenEditor
+      postId={id}
+      postTitle={post.title ?? ''}
+      initialSlides={slides}
+      rules={rules}
+    />
+  );
 }

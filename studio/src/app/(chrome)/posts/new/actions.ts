@@ -2,25 +2,46 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { generateScript, type ScriptGenerationInput } from '@/lib/ai/gemini';
 import type { Persona, Series } from '@/lib/supabase/types';
 
-export type GeneratePostInput = {
+// manual-flow-redesign §7.2: AI script generation removed.
+// /posts/new now just creates blank slides; user authors content manually.
+
+export type CreatePostInput = {
   topic: string;
   series: Series;
   persona: Persona;
-  facts: string;
-  tone: 'soft' | 'normal' | 'strong';
   slideCount: number;
   cta: string;
   rewardLink?: string | null;
 };
 
-export type GeneratePostResult = { postId?: string; error?: string };
+export type CreatePostResult = { postId?: string; error?: string };
 
-export async function generatePostAction(
-  input: GeneratePostInput,
-): Promise<GeneratePostResult> {
+// Default principle distribution for N cards (user can change in script editor)
+function defaultPrincipleFor(idx: number, total: number): string {
+  // 6원칙 분포: 1=hook, 2~30%=problem, 30~55%=solution, 55~70%=doubt, 70~85%=scarcity, 85~100%=cta
+  if (idx === 0) return 'hook';
+  const ratio = idx / Math.max(total - 1, 1);
+  if (ratio < 0.3) return 'problem';
+  if (ratio < 0.55) return 'solution';
+  if (ratio < 0.7) return 'doubt';
+  if (ratio < 0.85) return 'scarcity';
+  return 'cta';
+}
+
+function defaultSpeakerFor(idx: number, principle: string): 'niece' | 'uncle' | 'none' {
+  // 1번 카드는 항상 niece (조카가 묻는 패턴)
+  if (idx === 0) return 'niece';
+  // 의심제거(doubt)는 조카가 의심하는 형태가 자연스러움
+  if (principle === 'doubt') return 'niece';
+  // 그 외 삼촌이 답
+  return 'uncle';
+}
+
+export async function createBlankPostAction(
+  input: CreatePostInput,
+): Promise<CreatePostResult> {
   const supabase = await createClient();
 
   const {
@@ -28,49 +49,12 @@ export async function generatePostAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다' };
 
-  // 1. Load active prompt
-  const { data: prompt, error: promptError } = await supabase
-    .from('prompts')
-    .select('id, active_version_id')
-    .eq('slug', 'script_generation')
-    .maybeSingle();
-
-  if (promptError || !prompt?.active_version_id) {
-    return { error: '활성 프롬프트를 찾을 수 없습니다' };
+  if (!input.topic.trim()) return { error: '주제를 입력해주세요' };
+  if (input.slideCount < 3 || input.slideCount > 15) {
+    return { error: '카드 수는 3~15장 사이여야 합니다' };
   }
 
-  const { data: version } = await supabase
-    .from('prompt_versions')
-    .select('body')
-    .eq('id', prompt.active_version_id)
-    .single();
-
-  if (!version?.body) {
-    return { error: '프롬프트 본문을 불러올 수 없습니다' };
-  }
-
-  // 2. Call Gemini
-  const aiInput: ScriptGenerationInput = {
-    topic: input.topic,
-    series: input.series,
-    persona: input.persona,
-    facts: input.facts,
-    tone: input.tone,
-    slideCount: input.slideCount,
-    cta: input.cta,
-    rewardLink: input.rewardLink ?? null,
-    promptBody: version.body,
-  };
-
-  let slides;
-  try {
-    slides = await generateScript(aiInput);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'AI 생성 실패';
-    return { error: `AI 생성 실패: ${msg}` };
-  }
-
-  // 3. Create post + slides in a single ordered insert sequence
+  // 1. Create post
   const { data: post, error: postErr } = await supabase
     .from('posts')
     .insert({
@@ -80,8 +64,6 @@ export async function generatePostAction(
       persona: input.persona,
       status: 'draft',
       topic: input.topic,
-      facts: input.facts,
-      tone: input.tone,
       cta_kind: input.cta,
       reward_link: input.rewardLink ?? null,
     })
@@ -92,29 +74,26 @@ export async function generatePostAction(
     return { error: `게시물 생성 실패: ${postErr?.message ?? 'unknown'}` };
   }
 
-  // slide-templates + dialogue-default: AI 생성 결과는 모두 대화형으로 시작
-  // - speaker가 'uncle'이면 msg_right (노란 말풍선 우측)
-  // - 그 외(niece/none)는 msg_left (흰 말풍선 좌측)
-  // 사용자는 디자인 페이지에서 언제든 다른 템플릿으로 변경 가능.
-  const slideRows = slides.map((s, i) => {
-    const layout: string = s.speaker === 'uncle' ? 'msg_right' : 'msg_left';
+  // 2. Create blank slides with sensible default principle/speaker/layout
+  const slideRows = Array.from({ length: input.slideCount }, (_, i) => {
+    const principle = defaultPrincipleFor(i, input.slideCount);
+    const speaker = defaultSpeakerFor(i, principle);
+    const layout = speaker === 'uncle' ? 'msg_right' : 'msg_left';
     return {
       post_id: post.id,
       ord: i + 1,
-      principle: s.principle,
-      speaker: s.speaker,
-      scene: s.scene,
-      main_text: s.main,
-      sub_text: s.sub,
-      emphasis: s.emphasis,
+      principle,
+      speaker,
+      scene: '',
+      main_text: '',
+      sub_text: '',
+      emphasis: [],
       layout,
     };
   });
 
   const { error: slidesErr } = await supabase.from('slides').insert(slideRows);
-
   if (slidesErr) {
-    // Best-effort cleanup
     await supabase.from('posts').delete().eq('id', post.id);
     return { error: `슬라이드 생성 실패: ${slidesErr.message}` };
   }
